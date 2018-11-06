@@ -64,3 +64,13 @@ $Group "dedicated"
 	"tier1"
 }
 
+$Group "insolence"
+{
+	"client"
+	"game_shader_dx9"
+	"mathlib"
+	"raytrace"
+	"server"
+	"tier1"
+	"vgui_controls"
+}
