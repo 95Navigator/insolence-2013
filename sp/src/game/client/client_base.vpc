@@ -487,7 +487,6 @@ $Project
 		$File	"viewdebug.h"
 		$File	"viewpostprocess.cpp"
 		$File	"viewpostprocess.h"
-		$File	"viewrender.cpp"
 		$File	"$SRCDIR\game\shared\voice_banmgr.cpp"
 		$File	"$SRCDIR\game\shared\voice_status.cpp"
 		$File	"warp_overlay.cpp"
