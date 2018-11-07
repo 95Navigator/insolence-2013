@@ -23,11 +23,6 @@ $Configuration
 
 $Project "Client (Insolence)"
 {
-	$Folder "Insolence"
-	{
-		$File	"viewrender.cpp"
-	}
-
 	$Folder	"Source Files"
 	{
 		$File	"hud_chat.cpp"
