@@ -2007,7 +2007,7 @@ bool CHL2_Player::ApplyBattery( float powerMultiplier )
 		Q_snprintf( szcharge,sizeof(szcharge),"!HEV_%1dP", pct );
 		
 		//UTIL_EmitSoundSuit(edict(), szcharge);
-		//SetSuitUpdate(szcharge, FALSE, SUIT_NEXT_IN_30SEC);
+		SetSuitUpdate(szcharge, FALSE, SUIT_NEXT_IN_30SEC);
 		return true;		
 	}
 	return false;

@@ -255,71 +255,42 @@ static ConVar	v_ipitch_level( "v_ipitch_level", "0.3"/*, FCVAR_UNREGISTERED*/ );
 //-----------------------------------------------------------------------------
 float CBaseHLCombatWeapon::CalcViewmodelBob( void )
 {
-	static	float bobtime;
-	static	float lastbobtime;
+	static	double	bobtime;
+	static float	bob;
 	float	cycle;
 	
 	CBasePlayer *player = ToBasePlayer( GetOwner() );
-	//Assert( player );
+	if ( !player )
+		return 0.0f;
 
-	//NOTENOTE: For now, let this cycle continue when in the air, because it snaps badly without it
-
-	if ( ( !gpGlobals->frametime ) || ( player == NULL ) )
+	if ( ( player->GetGroundEntity() == NULL ) || !gpGlobals->frametime )
 	{
-		//NOTENOTE: We don't use this return value in our case (need to restructure the calculation function setup!)
-		return 0.0f;// just use old value
+		return bob;		// just use old value
 	}
 
-	//Find the speed of the player
-	float speed = player->GetLocalVelocity().Length2D();
-
-	//FIXME: This maximum speed value must come from the server.
-	//		 MaxSpeed() is not sufficient for dealing with sprinting - jdw
-
-	speed = clamp( speed, -320, 320 );
-
-	float bob_offset = RemapVal( speed, 0, 320, 0.0f, 1.0f );
+	bobtime += gpGlobals->frametime;
 	
-	bobtime += ( gpGlobals->curtime - lastbobtime ) * bob_offset;
-	lastbobtime = gpGlobals->curtime;
+	cycle = bobtime - (int)(bobtime/cl_bobcycle.GetFloat())*cl_bobcycle.GetFloat();
+	cycle /= cl_bobcycle.GetFloat();
 
-	//Calculate the vertical bob
-	cycle = bobtime - (int)(bobtime/HL2_BOB_CYCLE_MAX)*HL2_BOB_CYCLE_MAX;
-	cycle /= HL2_BOB_CYCLE_MAX;
-
-	if ( cycle < HL2_BOB_UP )
+	if (cycle < cl_bobup.GetFloat())
 	{
-		cycle = M_PI * cycle / HL2_BOB_UP;
+		cycle = M_PI * cycle / cl_bobup.GetFloat();
 	}
 	else
 	{
-		cycle = M_PI + M_PI*(cycle-HL2_BOB_UP)/(1.0 - HL2_BOB_UP);
+		cycle = M_PI + M_PI*(cycle-cl_bobup.GetFloat())/(1.0 - cl_bobup.GetFloat());
 	}
+
+	// bob is proportional to simulated velocity in the xy plane
+	// (don't count Z, or jumping messes it up)
+	bob = player->GetAbsVelocity().Length2D() * cl_bob.GetFloat();
 	
-	g_verticalBob = speed*0.005f;
-	g_verticalBob = g_verticalBob*0.3 + g_verticalBob*0.7*sin(cycle);
+	bob = bob*0.3 + bob*0.7*sin(cycle);
 
-	g_verticalBob = clamp( g_verticalBob, -7.0f, 4.0f );
-
-	//Calculate the lateral bob
-	cycle = bobtime - (int)(bobtime/HL2_BOB_CYCLE_MAX*2)*HL2_BOB_CYCLE_MAX*2;
-	cycle /= HL2_BOB_CYCLE_MAX*2;
-
-	if ( cycle < HL2_BOB_UP )
-	{
-		cycle = M_PI * cycle / HL2_BOB_UP;
-	}
-	else
-	{
-		cycle = M_PI + M_PI*(cycle-HL2_BOB_UP)/(1.0 - HL2_BOB_UP);
-	}
-
-	g_lateralBob = speed*0.005f;
-	g_lateralBob = g_lateralBob*0.3 + g_lateralBob*0.7*sin(cycle);
-	g_lateralBob = clamp( g_lateralBob, -7.0f, 4.0f );
-	
-	//NOTENOTE: We don't use this return value in our case (need to restructure the calculation function setup!)
-	return 0.0f;
+	bob = min( 4.0, bob );
+	bob = max( -7.0, bob );
+	return bob;
 }
 
 //-----------------------------------------------------------------------------
@@ -330,24 +301,32 @@ float CBaseHLCombatWeapon::CalcViewmodelBob( void )
 //-----------------------------------------------------------------------------
 void CBaseHLCombatWeapon::AddViewmodelBob( CBaseViewModel *viewmodel, Vector &origin, QAngle &angles )
 {
-	Vector	forward, right;
-	AngleVectors( angles, &forward, &right, NULL );
+	float fIdleScale = 2.0f;
 
-	CalcViewmodelBob();
+	// Bias so view models aren't all synced to each other
+	//float curtime = gpGlobals->curtime + ( viewmodelindex * 2 * M_PI / GetViewModelCount() );
+
+	float curtime = gpGlobals->curtime + ( viewmodel->entindex() * 2 * M_PI );
+
+	origin[ROLL]	-= fIdleScale * sin(curtime*v_iroll_cycle.GetFloat()) * v_iroll_level.GetFloat();
+	origin[PITCH]	-= fIdleScale * sin(curtime*v_ipitch_cycle.GetFloat()) * (v_ipitch_level.GetFloat() * 0.5);
+	origin[YAW]		-= fIdleScale * sin(curtime*v_iyaw_cycle.GetFloat()) * v_iyaw_level.GetFloat();
+
+	Vector	forward;
+	AngleVectors( angles, &forward, NULL, NULL );
+
+	float	flBob = CalcViewmodelBob();
 
 	// Apply bob, but scaled down to 40%
-	VectorMA( origin, g_verticalBob * 0.1f, forward, origin );
-	
+	VectorMA( origin, flBob * 0.4, forward, origin );
+
 	// Z bob a bit more
-	origin[2] += g_verticalBob * 0.1f;
-	
-	// bob the angles
-	angles[ ROLL ]	+= g_verticalBob * 0.5f;
-	angles[ PITCH ]	-= g_verticalBob * 0.4f;
+	origin[2] += flBob;
 
-	angles[ YAW ]	-= g_lateralBob  * 0.3f;
-
-	VectorMA( origin, g_lateralBob * 0.8f, right, origin );
+	// throw in a little tilt.
+	angles[ YAW ]	-= flBob * 0.6;
+	angles[ ROLL ]	-= flBob * 0.5;
+	angles[ PITCH ]	-= flBob * 0.4;
 }
 
 //-----------------------------------------------------------------------------

@@ -1279,8 +1279,8 @@ int CBasePlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		{
 			if (m_lastDamageAmount > 5)
 				SetSuitUpdate("!HEV_DMG6", false, SUIT_NEXT_IN_30SEC);	// blood loss detected
-			//else
-			//	SetSuitUpdate("!HEV_DMG0", false, SUIT_NEXT_IN_30SEC);	// minor laceration
+			else
+				SetSuitUpdate("!HEV_DMG0", false, SUIT_NEXT_IN_30SEC);	// minor laceration
 			
 			bitsDamage &= ~DMG_BULLET;
 			ffound = true;
