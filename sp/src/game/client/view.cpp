@@ -344,6 +344,9 @@ void CViewRender::LevelInit( void )
 
 	// Init all IScreenSpaceEffects
 	g_pScreenSpaceEffects->InitScreenSpaceEffects( );
+
+	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_healthfx" );
+	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_vignetting" );
 }
 
 //-----------------------------------------------------------------------------
@@ -351,6 +354,9 @@ void CViewRender::LevelInit( void )
 //-----------------------------------------------------------------------------
 void CViewRender::LevelShutdown( void )
 {
+	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_vignetting" );
+	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_healthfx" );
+
 	g_pScreenSpaceEffects->ShutdownScreenSpaceEffects( );
 }
 

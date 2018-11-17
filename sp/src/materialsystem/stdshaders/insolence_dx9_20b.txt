@@ -7,3 +7,10 @@
 //	    _vs20.vcs
 //
 
+//vignetting
+vignetting_vs20.fxc
+vignetting_ps2x.fxc
+
+//chromatic
+chromatic_vs20.fxc
+chromatic_ps2x.fxc

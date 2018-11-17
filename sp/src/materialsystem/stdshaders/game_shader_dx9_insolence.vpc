@@ -10,4 +10,14 @@ $Include "$SRCDIR\materialsystem\stdshaders\game_shader_dx9_base.vpc"
 
 $Project "Shaders (Insolence)"
 {
+	$Folder	"Source Files"
+	{
+		$File	"chromatic.cpp"
+		$File	"vignetting.cpp"
+	}
+	
+	$File	"buildinsolenceshaders.bat"
+
+	$Shaders	"insolence_dx9_20b.txt"
+	$Shaders	"insolence_dx9_30.txt"
 }
