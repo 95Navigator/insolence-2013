@@ -13,6 +13,8 @@ $Project "Shaders (Insolence)"
 	$Folder	"Source Files"
 	{
 		$File	"chromatic.cpp"
+		$File	"gaussianx.cpp"
+		$File	"gaussiany.cpp"
 		$File	"vignetting.cpp"
 	}
 	

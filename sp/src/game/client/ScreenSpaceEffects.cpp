@@ -352,7 +352,7 @@ private:
 
 ADD_SCREENSPACE_EFFECT( CHealthEffects, c17_healthfx );
 
-ConVar r_post_chromatic_dispersion_offset( "r_post_chromatic_dispersion_offset", "1.3", FCVAR_CHEAT, "Controls constant chromatic dispersion strength, 0 for off." );
+ConVar r_post_chromatic_dispersion_offset( "r_post_chromatic_dispersion_offset", "0.0", FCVAR_CHEAT, "Controls constant chromatic dispersion strength, 0 for off." );
 ConVar r_post_chromatic_dispersion_offset_heavydamage( "r_post_chromatic_dispersion_offset_heavydamage", "1.5", FCVAR_CHEAT, "Controls constant chromatic dispersion strength when the player takes heavy damage." );
 ConVar r_post_chromatic_dispersion_offset_damage( "r_post_chromatic_dispersion_offset_damage", "8.0", FCVAR_CHEAT, "Controls constant chromatic dispersion strength when the player takes damage." );
 

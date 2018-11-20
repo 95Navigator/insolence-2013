@@ -22,7 +22,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-extern ConVar sk_auto_reload_time;
 extern ConVar sk_plr_num_shotgun_pellets;
 
 class CWeaponShotgun : public CBaseHLCombatWeapon
@@ -306,7 +305,7 @@ bool CWeaponShotgun::StartReload( void )
 	SetBodygroup(1,0);
 
 	pOwner->m_flNextAttack = gpGlobals->curtime;
-	m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
+	m_flNextPrimaryAttack = m_flReloadTime = gpGlobals->curtime + SequenceDuration();
 
 	m_bInReload = true;
 	return true;
@@ -347,7 +346,7 @@ bool CWeaponShotgun::Reload( void )
 	SendWeaponAnim( ACT_VM_RELOAD );
 
 	pOwner->m_flNextAttack = gpGlobals->curtime;
-	m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
+	m_flNextPrimaryAttack = m_flReloadTime = gpGlobals->curtime + SequenceDuration();
 
 	return true;
 }
@@ -373,7 +372,7 @@ void CWeaponShotgun::FinishReload( void )
 	SendWeaponAnim( ACT_SHOTGUN_RELOAD_FINISH );
 
 	pOwner->m_flNextAttack = gpGlobals->curtime;
-	m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
+	m_flNextPrimaryAttack = m_flReloadTime = gpGlobals->curtime + SequenceDuration();
 }
 
 //-----------------------------------------------------------------------------
@@ -604,6 +603,15 @@ void CWeaponShotgun::ItemPostFrame( void )
 		SetBodygroup(1,1);
 	}
 
+	if( m_flReloadTime > gpGlobals->curtime )
+	{
+		m_bReloadBlur = true;
+	}
+	else
+	{
+		m_bReloadBlur = false;
+	}
+
 	if ((m_bNeedPump) && (m_flNextPrimaryAttack <= gpGlobals->curtime))
 	{
 		Pump();
@@ -751,25 +759,6 @@ void CWeaponShotgun::ItemHolsterFrame( void )
 	// We can't be active
 	if ( GetOwner()->GetActiveWeapon() == this )
 		return;
-
-	// If it's been longer than three seconds, reload
-	if ( ( gpGlobals->curtime - m_flHolsterTime ) > sk_auto_reload_time.GetFloat() )
-	{
-		// Reset the timer
-		m_flHolsterTime = gpGlobals->curtime;
-	
-		if ( GetOwner() == NULL )
-			return;
-
-		if ( m_iClip1 == GetMaxClip1() )
-			return;
-
-		// Just load the clip with no animations
-		int ammoFill = MIN( (GetMaxClip1() - m_iClip1), GetOwner()->GetAmmoCount( GetPrimaryAmmoType() ) );
-		
-		GetOwner()->RemoveAmmo( ammoFill, GetPrimaryAmmoType() );
-		m_iClip1 += ammoFill;
-	}
 }
 
 //==================================================
