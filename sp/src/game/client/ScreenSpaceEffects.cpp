@@ -319,6 +319,114 @@ void CExampleEffect::Render( int x, int y, int w, int h )
 }
 
 //------------------------------------------------------------------------------
+// Unsharp post-processing effect
+//------------------------------------------------------------------------------
+class CUnsharpEffect : public IScreenSpaceEffect
+{
+public:
+	CUnsharpEffect() { };
+	~CUnsharpEffect() { };
+
+	void Init( );
+	void Shutdown( );
+
+	void SetParameters( KeyValues *params ) { };
+
+	void Render( int x, int y, int w, int h );
+
+	void Enable( bool bEnable ) { m_bEnable = bEnable; }
+	bool IsEnabled( ) { return m_bEnable; }
+
+private:
+
+	bool				m_bEnable;
+
+	CTextureReference	m_UnsharpBlurFB;
+	CMaterialReference	m_UnsharpBlur;
+	CMaterialReference	m_Unsharp;
+};
+
+ADD_SCREENSPACE_EFFECT( CUnsharpEffect, c17_unsharp );
+
+ConVar r_post_unsharp( "r_post_unsharp", "1", FCVAR_ARCHIVE );
+ConVar r_post_unsharp_debug( "r_post_unsharp_debug", "0", FCVAR_CHEAT );
+ConVar r_post_unsharp_strength( "r_post_unsharp_strength", "0.5", FCVAR_CHEAT );
+ConVar r_post_unsharp_blursize( "r_post_unsharp_blursize", "5.0", FCVAR_CHEAT );
+
+//------------------------------------------------------------------------------
+// CUnsharpEffect init
+//------------------------------------------------------------------------------
+void CUnsharpEffect::Init()
+{
+	m_UnsharpBlurFB.InitRenderTarget( ScreenWidth()/2, ScreenHeight()/2, RT_SIZE_DEFAULT, IMAGE_FORMAT_RGBA8888, MATERIAL_RT_DEPTH_NONE, false, "_rt_UnsharpBlur" );
+
+	m_UnsharpBlur.Init( materials->FindMaterial("effects/shaders/unsharp_blur", TEXTURE_GROUP_PIXEL_SHADERS, true) );
+	m_Unsharp.Init( materials->FindMaterial("effects/shaders/unsharp", TEXTURE_GROUP_PIXEL_SHADERS, true) );
+}
+
+
+//------------------------------------------------------------------------------
+// CUnsharpEffect shutdown
+//------------------------------------------------------------------------------
+void CUnsharpEffect::Shutdown()
+{
+	m_UnsharpBlurFB.Shutdown();
+	m_UnsharpBlur.Shutdown();
+	m_Unsharp.Shutdown();
+}
+
+//------------------------------------------------------------------------------
+// CUnsharpEffect render
+//------------------------------------------------------------------------------
+void CUnsharpEffect::Render( int x, int y, int w, int h )
+{
+	if ( !r_post_unsharp.GetBool() || ( IsEnabled() == false ) )
+		return;
+
+	// Grab the render context
+	CMatRenderContextPtr pRenderContext( materials );
+
+	// Set to the proper rendering mode.
+	pRenderContext->MatrixMode( MATERIAL_VIEW );
+	pRenderContext->PushMatrix();
+	pRenderContext->LoadIdentity();
+	pRenderContext->MatrixMode( MATERIAL_PROJECTION );
+	pRenderContext->PushMatrix();
+	pRenderContext->LoadIdentity();
+
+	IMaterialVar *var;
+	var = m_UnsharpBlur->FindVar( "$blursize", NULL );
+	var->SetFloatValue( r_post_unsharp_blursize.GetFloat() );
+
+	if( r_post_unsharp_debug.GetBool() )
+	{
+		DrawScreenEffectMaterial( m_UnsharpBlur, x, y, w, h );
+		return;
+	}
+
+	Rect_t actualRect;
+	UpdateScreenEffectTexture( 0, x, y, w, h, false, &actualRect );
+	pRenderContext->PushRenderTargetAndViewport( m_UnsharpBlurFB );
+		DrawScreenEffectQuad( m_UnsharpBlur, m_UnsharpBlurFB->GetActualWidth(), m_UnsharpBlurFB->GetActualHeight() );
+	pRenderContext->PopRenderTargetAndViewport();
+
+	//Restore our state
+	pRenderContext->MatrixMode( MATERIAL_VIEW );
+	pRenderContext->PopMatrix();
+	pRenderContext->MatrixMode( MATERIAL_PROJECTION );
+	pRenderContext->PopMatrix();
+
+	var = m_Unsharp->FindVar( "$fbblurtexture", NULL );
+	var->SetTextureValue( m_UnsharpBlurFB );
+	var = m_Unsharp->FindVar( "$unsharpstrength", NULL );
+	var->SetFloatValue( r_post_unsharp_strength.GetFloat() );
+	var = m_Unsharp->FindVar( "$blursize", NULL );
+	var->SetFloatValue( r_post_unsharp_blursize.GetFloat() );
+
+	DrawScreenEffectMaterial( m_Unsharp, x, y, w, h );
+}
+
+//------------------------------------------------------------------------------
 // Health post-processing effects
 //------------------------------------------------------------------------------
 class CHealthEffects : public IScreenSpaceEffect
@@ -463,9 +571,9 @@ private:
 ADD_SCREENSPACE_EFFECT( CVignettingEffect, c17_vignetting );
 
 ConVar r_post_vignetting_darkness( "r_post_vignetting_darkness", "1.25", FCVAR_CHEAT, "Controls the vignetting shader's power. 0 for off." );
-ConVar r_post_vignettingeffect_debug( "r_post_vignettingeffect_debug", "0", FCVAR_CHEAT );
+ConVar r_post_vignetting_debug( "r_post_vignetting_debug", "0", FCVAR_CHEAT );
 
-ConVar r_post_vignettingeffect( "r_post_vignettingeffect", "1", FCVAR_ARCHIVE );
+ConVar r_post_vignetting( "r_post_vignetting", "1", FCVAR_ARCHIVE );
 
 //------------------------------------------------------------------------------
 // CVignettingEffect init
@@ -492,7 +600,7 @@ void CVignettingEffect::Shutdown()
 //------------------------------------------------------------------------------
 void CVignettingEffect::Render( int x, int y, int w, int h )
 {
-	if ( !r_post_vignettingeffect.GetBool() || ( IsEnabled() == false ) )
+	if ( !r_post_vignetting.GetBool() || ( IsEnabled() == false ) )
 		return;
 
 	fVignettingLerpTo = r_post_vignetting_darkness.GetFloat();
@@ -507,7 +615,7 @@ void CVignettingEffect::Render( int x, int y, int w, int h )
 		var = m_VignetMat->FindVar( "$VIGNETDARKNESS", NULL );
 		var->SetFloatValue( fVignettingAmount );
 		DrawScreenEffectMaterial( m_VignetMat, x, y, w, h );
-		if( r_post_vignettingeffect_debug.GetBool() )
+		if( r_post_vignetting_debug.GetBool() )
 			DevMsg( "Vignetting Amount: %.2f\n", fVignettingAmount );
 	}
 }

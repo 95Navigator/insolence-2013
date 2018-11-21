@@ -20,3 +20,11 @@ gaussianx_ps2x.fxc
 
 //gaussiany
 gaussiany_ps2x.fxc
+
+//unsharp
+unsharp_vs20.fxc
+unsharp_ps2x.fxc
+
+//unsharp_blur
+unsharp_blur_vs20.fxc
+unsharp_blur_ps2x.fxc
