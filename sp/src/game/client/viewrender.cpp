@@ -806,6 +806,8 @@ CLIENTEFFECT_REGISTER_BEGIN( PrecachePostProcessingEffects )
 	CLIENTEFFECT_MATERIAL( "dev/pyro_post" )
 #endif
 
+	CLIENTEFFECT_MATERIAL( "effects/shaders/bokeh" )
+
 	CLIENTEFFECT_MATERIAL( "effects/shaders/screen_blurx" )
 	CLIENTEFFECT_MATERIAL( "effects/shaders/screen_blury" )
 
@@ -2381,11 +2383,29 @@ void CViewRender::Render2DEffectsPostHUD( const CViewSetup &view )
 {
 }
 
+ConVar r_post_bokeh( "r_post_bokeh", "1", FCVAR_ARCHIVE );
+ConVar r_post_bokeh_blur_amount( "r_post_bokeh_blur_amount", "5.0", FCVAR_CHEAT );
+
+void CViewRender::PerformBokeh( int x, int y, int width, int height )
+{
+	if ( !r_post_bokeh.GetBool() )
+		return;
+
+	IMaterialVar *var;
+
+	IMaterial *pBokeh = materials->FindMaterial( "effects/shaders/bokeh", TEXTURE_GROUP_PIXEL_SHADERS, true );
+
+	var = pBokeh->FindVar( "$MUTABLE_01", NULL );
+	var->SetFloatValue( r_post_bokeh_blur_amount.GetFloat() );
+
+	DrawScreenEffectMaterial( pBokeh, x, y, width, height );
+}
+
 ConVar r_post_reload_blur( "r_post_reload_blur", "1", FCVAR_ARCHIVE );
 ConVar r_post_reload_blur_amount( "r_post_reload_blur_amount", "2.0", FCVAR_CHEAT );
 ConVar r_post_reload_blur_rate( "r_post_reload_blur_rate", "0.1", FCVAR_CHEAT );
 
-void CViewRender::PerformPreViewmodelPostProcessEffects( int x, int y, int width, int height )
+void CViewRender::PerformReloadBlur( int x, int y, int width, int height )
 {
 	if( !r_post_reload_blur.GetBool() )
 		return;
@@ -2428,6 +2448,12 @@ void CViewRender::PerformPreViewmodelPostProcessEffects( int x, int y, int width
 
 	DrawScreenEffectMaterial( pBlurX, x, y, width, height );
 	DrawScreenEffectMaterial( pBlurY, x, y, width, height );
+}
+
+void CViewRender::PerformPreViewmodelPostProcessEffects( int x, int y, int width, int height )
+{
+	PerformBokeh( x, y, width, height );
+	PerformReloadBlur( x, y, width, height );
 }
 
 //-----------------------------------------------------------------------------

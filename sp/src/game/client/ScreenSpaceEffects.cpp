@@ -350,7 +350,7 @@ ADD_SCREENSPACE_EFFECT( CUnsharpEffect, c17_unsharp );
 
 ConVar r_post_unsharp( "r_post_unsharp", "1", FCVAR_ARCHIVE );
 ConVar r_post_unsharp_debug( "r_post_unsharp_debug", "0", FCVAR_CHEAT );
-ConVar r_post_unsharp_strength( "r_post_unsharp_strength", "0.5", FCVAR_CHEAT );
+ConVar r_post_unsharp_strength( "r_post_unsharp_strength", "0.3", FCVAR_CHEAT );
 ConVar r_post_unsharp_blursize( "r_post_unsharp_blursize", "5.0", FCVAR_CHEAT );
 
 //------------------------------------------------------------------------------
