@@ -14,11 +14,13 @@
 #include "hud.h"
 #include "hudelement.h"
 #include "hud_macros.h"
-#include "hud_numericdisplay.h"
+#include "hud_bitmapnumericdisplay.h"
 #include "iclientmode.h"
 
 #include "vgui_controls/AnimationController.h"
 #include "vgui/ILocalize.h"
+
+using namespace vgui;
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -28,9 +30,9 @@
 //-----------------------------------------------------------------------------
 // Purpose: Displays suit power (armor) on hud
 //-----------------------------------------------------------------------------
-class CHudBattery : public CHudNumericDisplay, public CHudElement
+class CHudBattery : public CHudBitmapNumericDisplay, public CHudElement
 {
-	DECLARE_CLASS_SIMPLE( CHudBattery, CHudNumericDisplay );
+	DECLARE_CLASS_SIMPLE( CHudBattery, CHudBitmapNumericDisplay );
 
 public:
 	CHudBattery( const char *pElementName );
@@ -41,6 +43,7 @@ public:
 	void MsgFunc_Battery(bf_read &msg );
 	bool ShouldDraw();
 	
+	virtual void ApplySchemeSettings( IScheme *scheme );
 private:
 	int		m_iBat;	
 	int		m_iNewBat;
@@ -55,6 +58,13 @@ DECLARE_HUD_MESSAGE( CHudBattery, Battery );
 CHudBattery::CHudBattery( const char *pElementName ) : BaseClass(NULL, "HudSuit"), CHudElement( pElementName )
 {
 	SetHiddenBits( HIDEHUD_HEALTH | HIDEHUD_NEEDSUIT );
+}
+
+void CHudBattery::ApplySchemeSettings( IScheme *scheme )
+{
+	BaseClass::ApplySchemeSettings( scheme );
+
+	SetPaintBackgroundEnabled( false );
 }
 
 //-----------------------------------------------------------------------------
@@ -73,7 +83,7 @@ void CHudBattery::Init( void )
 //-----------------------------------------------------------------------------
 void CHudBattery::Reset( void )
 {
-	SetLabelText(g_pVGuiLocalize->Find("#Valve_Hud_SUIT"));
+	/*SetLabelText(g_pVGuiLocalize->Find("#Valve_Hud_SUIT"));*/
 	SetDisplayValue(m_iBat);
 }
 

@@ -28,8 +28,19 @@ CHudBitmapNumericDisplay::CHudBitmapNumericDisplay(vgui::Panel *parent, const ch
 	SetParent( pParent );
 
 	m_iValue = 0;
+	m_iSecondaryValue = 0;
 	m_bDisplayValue = true;
+	m_bDisplaySecondaryValue = false;
 	memset( m_pNumbers, 0, 10*sizeof(CHudTexture *) );
+	memset( m_pSecondaryNumbers, 0, 10*sizeof(CHudTexture *) );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Resets values on restore/new map
+//-----------------------------------------------------------------------------
+void CHudBitmapNumericDisplay::Reset()
+{
+	m_flBlur = 0.0f;
 }
 
 //-----------------------------------------------------------------------------
@@ -40,6 +51,13 @@ void CHudBitmapNumericDisplay::SetDisplayValue(int value)
 	m_iValue = value;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: data accessor
+//-----------------------------------------------------------------------------
+void CHudBitmapNumericDisplay::SetSecondaryValue(int value)
+{
+	m_iSecondaryValue = value;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: renders the vgui panel
@@ -54,7 +72,6 @@ void CHudBitmapNumericDisplay::Paint()
 	if (m_bDisplayValue)
 	{
 		// draw our numbers
-	//	surface()->DrawSetTextColor(GetFgColor());
 		PaintNumbers(digit_xpos, digit_ypos, m_iValue, GetFgColor());
 
 		// draw the overbright blur
@@ -73,6 +90,11 @@ void CHudBitmapNumericDisplay::Paint()
 			}
 		}
 	}
+
+	if (m_bDisplaySecondaryValue)
+	{
+		PaintSecondaryNumbers(digit2_xpos, digit2_ypos, m_iSecondaryValue, GetFgColor());
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -81,6 +103,14 @@ void CHudBitmapNumericDisplay::Paint()
 void CHudBitmapNumericDisplay::SetShouldDisplayValue(bool state)
 {
 	m_bDisplayValue = state;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: data accessor
+//-----------------------------------------------------------------------------
+void CHudBitmapNumericDisplay::SetShouldDisplaySecondaryValue(bool state)
+{
+	m_bDisplaySecondaryValue = state;
 }
 
 //-----------------------------------------------------------------------------
@@ -160,6 +190,77 @@ void CHudBitmapNumericDisplay::PaintNumbers(int xpos, int ypos, int value, Color
 		{
 			bStart = true;
 			m_pNumbers[digit]->DrawSelf( xpos, ypos, width, height, col );
+			xpos += width;
+		}		
+
+		pos /= 10;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CHudBitmapNumericDisplay::PaintSecondaryNumbers(int xpos, int ypos, int value, Color col, int numSigDigits )
+{
+	if( !m_pSecondaryNumbers[0] )
+	{
+		int i;
+		char a[16];
+
+		for( i=0;i<10;i++ )
+		{
+			sprintf( a, "sec_number_%d", i );
+
+			m_pSecondaryNumbers[i] = gHUD.GetIcon( a );
+		}
+
+		if( !m_pSecondaryNumbers[0] )
+			return;
+	}
+
+	if( value > 100000 )
+	{
+		value = 99999;
+	}
+
+	int pos = 10000;
+
+	float scale = ( digit2_height / (float)m_pSecondaryNumbers[0]->Height());
+
+	int digit;
+	Color color = GetFgColor();
+	int width = m_pSecondaryNumbers[0]->Width() * scale;
+	int height = m_pSecondaryNumbers[0]->Height() * scale;
+	bool bStart = false;
+
+	//right align to xpos
+
+	int numdigits = 1;
+
+	int x = pos;
+	while( x >= 10 )
+	{
+		if( value >= x )
+			numdigits++;
+
+		x /= 10;
+	}
+
+	if( numdigits < numSigDigits )
+		numdigits = numSigDigits;
+
+	xpos -= numdigits * width;
+
+	//draw the digits
+	while( pos >= 1 )
+	{
+		digit = value / pos;
+		value = value % pos;
+		
+		if( bStart || digit > 0 || pos <= pow(10.0f,numSigDigits-1) )
+		{
+			bStart = true;
+			m_pSecondaryNumbers[digit]->DrawSelf( xpos, ypos, width, height, col );
 			xpos += width;
 		}		
 
