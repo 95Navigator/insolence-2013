@@ -40,6 +40,8 @@ protected:
 	{
 		PaintSecondaryNumbers(xpos, ypos, value, col, 1);
 	}
+	void PaintBackgroundNumbers(int xpos, int ypos, Color col, int numdigits);
+	void PaintBackgroundSecondaryNumbers(int xpos, int ypos, Color col, int numdigits);
 
 	CPanelAnimationVar( float, m_flAlphaOverride, "Alpha", "255" );
 	CPanelAnimationVar( Color, m_TextColor, "TextColor", "FgColor" );
@@ -50,12 +52,17 @@ protected:
 	CPanelAnimationVarAliasType( float, digit_height, "digit_height", "16", "proportional_float" );
 	CPanelAnimationVarAliasType( float, digit2_xpos, "digit2_xpos", "98", "proportional_float" );
 	CPanelAnimationVarAliasType( float, digit2_ypos, "digit2_ypos", "16", "proportional_float" );
-	CPanelAnimationVarAliasType( float, digit2_height, "digit_height", "8", "proportional_float" );
+	CPanelAnimationVarAliasType( float, digit2_height, "digit2_height", "8", "proportional_float" );
+
+	CPanelAnimationVarAliasType( float, b_digit_n, "b_digit_n", "0", "float" );
+	CPanelAnimationVarAliasType( float, b_digit2_n, "b_digit2_n", "0", "float" );
 
 private:
 
 	CHudTexture *m_pNumbers[10];
 	CHudTexture *m_pSecondaryNumbers[10];
+	CHudTexture *m_pBackgroundNumbers[2];
+	CHudTexture *m_pBackgroundSecondaryNumbers[2];
 
 	int m_iValue;
 	int m_iSecondaryValue;

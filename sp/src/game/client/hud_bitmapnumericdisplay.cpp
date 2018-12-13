@@ -33,6 +33,8 @@ CHudBitmapNumericDisplay::CHudBitmapNumericDisplay(vgui::Panel *parent, const ch
 	m_bDisplaySecondaryValue = false;
 	memset( m_pNumbers, 0, 10*sizeof(CHudTexture *) );
 	memset( m_pSecondaryNumbers, 0, 10*sizeof(CHudTexture *) );
+	memset( m_pBackgroundNumbers, 0, 2*sizeof(CHudTexture *) );
+	memset( m_pBackgroundSecondaryNumbers, 0, 2*sizeof(CHudTexture *) );
 }
 
 //-----------------------------------------------------------------------------
@@ -71,6 +73,9 @@ void CHudBitmapNumericDisplay::Paint()
 
 	if (m_bDisplayValue)
 	{
+		// draw our background numbers
+		PaintBackgroundNumbers(digit_xpos, digit_ypos, GetFgColor(), b_digit_n);
+
 		// draw our numbers
 		PaintNumbers(digit_xpos, digit_ypos, m_iValue, GetFgColor());
 
@@ -91,8 +96,10 @@ void CHudBitmapNumericDisplay::Paint()
 		}
 	}
 
+	// total ammo
 	if (m_bDisplaySecondaryValue)
 	{
+		PaintBackgroundSecondaryNumbers(digit2_xpos, digit2_ypos, GetFgColor(), b_digit2_n);
 		PaintSecondaryNumbers(digit2_xpos, digit2_ypos, m_iSecondaryValue, GetFgColor());
 	}
 }
@@ -265,5 +272,91 @@ void CHudBitmapNumericDisplay::PaintSecondaryNumbers(int xpos, int ypos, int val
 		}		
 
 		pos /= 10;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CHudBitmapNumericDisplay::PaintBackgroundNumbers(int xpos, int ypos, Color col, int numdigits )
+{
+	if( !m_pBackgroundNumbers[0] )
+	{
+		int i;
+		char a[16];
+
+		for( i=0;i<2;i++ )
+		{
+			sprintf( a, "b_number_%d", i );
+
+			m_pBackgroundNumbers[i] = gHUD.GetIcon( a );
+		}
+
+		if( !m_pBackgroundNumbers[0] )
+			return;
+	}
+
+	float scale = ( digit_height / (float)m_pBackgroundNumbers[0]->Height());
+
+	int digit = 0;
+	Color color = GetFgColor();
+	int width = m_pBackgroundNumbers[0]->Width() * scale;
+	int height = m_pBackgroundNumbers[0]->Height() * scale;
+	int i;
+
+	//right align to xpos
+
+	xpos -= numdigits * width;
+
+	//draw the digits
+	for ( i=0;i<numdigits;i++ )
+	{
+		m_pBackgroundNumbers[digit]->DrawSelf( xpos, ypos, width, height, col );
+		xpos += width;
+
+		digit = !digit;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CHudBitmapNumericDisplay::PaintBackgroundSecondaryNumbers(int xpos, int ypos, Color col, int numdigits )
+{
+	if( !m_pBackgroundSecondaryNumbers[0] )
+	{
+		int i;
+		char a[16];
+
+		for( i=0;i<2;i++ )
+		{
+			sprintf( a, "b_sec_number_%d", i );
+
+			m_pBackgroundSecondaryNumbers[i] = gHUD.GetIcon( a );
+		}
+
+		if( !m_pBackgroundSecondaryNumbers[0] )
+			return;
+	}
+
+	float scale = ( digit2_height / (float)m_pBackgroundSecondaryNumbers[0]->Height());
+
+	int digit = 0;
+	Color color = GetFgColor();
+	int width = m_pBackgroundSecondaryNumbers[0]->Width() * scale;
+	int height = m_pBackgroundSecondaryNumbers[0]->Height() * scale;
+	int i;
+
+	//right align to xpos
+
+	xpos -= numdigits * width;
+
+	//draw the digits
+	for ( i=0;i<numdigits;i++ ) 
+	{
+		m_pBackgroundSecondaryNumbers[digit]->DrawSelf( xpos, ypos, width, height, col );
+		xpos += width;
+
+		digit = !digit;
 	}
 }
