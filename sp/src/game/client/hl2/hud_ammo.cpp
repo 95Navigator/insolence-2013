@@ -82,15 +82,9 @@ void CHudAmmo::Init( void )
 	m_iAmmo		= -1;
 	m_iAmmo2	= -1;
 
-	wchar_t *tempString = g_pVGuiLocalize->Find("#Valve_Hud_AMMO");
-	if (tempString)
-	{
-		/*SetLabelText(tempString);*/
-	}
-	else
-	{
-		/*SetLabelText(L"AMMO");*/
-	}
+	SetLabelIcon("ammo_label");
+	SetNBackgroundNumbers(2);
+	SetNBackgroundSecondaryNumbers(3);
 }
 
 //-----------------------------------------------------------------------------
@@ -342,17 +336,8 @@ public:
 
 	void Init( void )
 	{
-#ifndef HL2MP
-		wchar_t *tempString = g_pVGuiLocalize->Find("#Valve_Hud_AMMO_ALT");
-		if (tempString)
-		{
-			/*SetLabelText(tempString);*/
-		}
-		else
-		{
-			/*SetLabelText(L"ALT");*/
-		}
-#endif // HL2MP
+		SetShouldDisplayLabelIcon(false);
+		SetNBackgroundNumbers(2);
 	}
 
 	void VidInit( void )
