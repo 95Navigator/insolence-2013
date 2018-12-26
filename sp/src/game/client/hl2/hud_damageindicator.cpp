@@ -1,4 +1,4 @@
-﻿//========= Copyright � 1996-2005, Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -17,7 +17,7 @@
 #include "materialsystem/IMaterial.h"
 #include "materialsystem/IMesh.h"
 #include "materialsystem/imaterialvar.h"
-#include "ieffects.h"
+#include "IEffects.h"
 #include "hudelement.h"
 
 using namespace vgui;
@@ -26,7 +26,7 @@ using namespace vgui;
 #include "tier0/memdbgon.h"
 
 //-----------------------------------------------------------------------------
-// Purpose: HDU Damage indication
+// Purpose: HUD Damage indication
 //-----------------------------------------------------------------------------
 class CHudDamageIndicator : public CHudElement, public vgui::Panel
 {
@@ -100,7 +100,9 @@ void CHudDamageIndicator::Init( void )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose: Save CPU cycles by letting the HUD system early cull
+// costly traversal.  Called per frame, return true if thinking and 
+// painting need to occur.
 //-----------------------------------------------------------------------------
 bool CHudDamageIndicator::ShouldDraw( void )
 {
@@ -113,6 +115,9 @@ bool CHudDamageIndicator::ShouldDraw( void )
 	return true;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Draws a damage quad
+//-----------------------------------------------------------------------------
 void CHudDamageIndicator::DrawDamageIndicatorFront( float flFade )
 {
 	if ( m_flAttackFront > 0.4 )
@@ -139,6 +144,9 @@ void CHudDamageIndicator::DrawDamageIndicatorFront( float flFade )
 	}
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Draws a damage quad
+//-----------------------------------------------------------------------------
 void CHudDamageIndicator::DrawDamageIndicatorRear( float flFade )
 {
 	if ( m_flAttackRear > 0.4 )
@@ -165,7 +173,9 @@ void CHudDamageIndicator::DrawDamageIndicatorRear( float flFade )
 	}
 }
 
-
+//-----------------------------------------------------------------------------
+// Purpose: Draws a damage quad
+//-----------------------------------------------------------------------------
 void CHudDamageIndicator::DrawDamageIndicatorLeft( float flFade )
 {
 	if ( m_flAttackLeft > 0.4 )
@@ -192,7 +202,9 @@ void CHudDamageIndicator::DrawDamageIndicatorLeft( float flFade )
 	}
 }
 
-
+//-----------------------------------------------------------------------------
+// Purpose: Draws a damage quad
+//-----------------------------------------------------------------------------
 void CHudDamageIndicator::DrawDamageIndicatorRight( float flFade )
 {
 	if ( m_flAttackRight > 0.4 )
