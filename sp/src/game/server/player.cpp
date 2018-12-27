@@ -6140,6 +6140,8 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		// Give the player everything!
 		GiveAmmo( 60,	"LargeRound");
 		GiveAmmo( 20,	"FlareRound");
+		GiveAmmo( 30,	"SniperRound");
+		GiveAmmo( 150,	"GaussEnergy");
 
 		GiveAmmo( 255,	"Pistol");
 		GiveAmmo( 255,	"AR2");
@@ -6153,6 +6155,8 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		GiveAmmo( 5,	"Hopwire" );
 #endif		
 		GiveNamedItem( "weapon_smg1" );
+		GiveNamedItem( "weapon_sniperrifle" );
+		GiveNamedItem( "weapon_gauss" );
 		GiveNamedItem( "weapon_frag" );
 		GiveNamedItem( "weapon_hmg1" );
 		GiveNamedItem( "weapon_crowbar" );

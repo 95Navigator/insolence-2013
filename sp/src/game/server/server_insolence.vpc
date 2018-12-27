@@ -267,10 +267,13 @@ $Project "Server (Insolence)"
 		
 		$Folder	"Insolence DLL"
 		{
-			$File	"insolence\weapon_hmg1.cpp"
+			$File	"insolence\weapon_binoculars.cpp"
 			$File	"hl2\weapon_flaregun.cpp"
 			$File	"hl2\weapon_flaregun.h"
-			$File	"insolence\weapon_binoculars.cpp"
+			$File	"hl2\weapon_gauss.h"
+			$File	"insolence\weapon_gauss.cpp"
+			$File	"insolence\weapon_hmg1.cpp"
+			$File	"insolence\weapon_sniperrifle.cpp"
 		}
 	}
 }
