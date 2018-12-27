@@ -20,7 +20,6 @@
 
 #define	FLARE_DURATION		30.0f
 #define FLARE_DECAY_TIME	10.0f
-#define FLARE_BLIND_TIME	6.0f
 
 //---------------------
 // Flare
@@ -31,11 +30,7 @@ class CFlare : public CBaseCombatCharacter
 public:
 	DECLARE_CLASS( CFlare, CBaseCombatCharacter );
 
-	CFlare();
-	~CFlare();
-
-	static CFlare *	GetActiveFlares( void );
-	CFlare *		GetNextFlare( void ) const { return m_pNextFlare; }
+	CFlare( void );
 
 	static CFlare *Create( Vector vecOrigin, QAngle vecAngles, CBaseEntity *pOwner, float lifetime );
 
@@ -65,8 +60,6 @@ public:
 	DECLARE_SERVERCLASS();
 	DECLARE_DATADESC();
 
-	static CFlare *activeFlares;
-
 	CBaseEntity *m_pOwner;
 	int			m_nBounces;			// how many times has this flare bounced?
 	CNetworkVar( float, m_flTimeBurnOut );	// when will the flare burn out?
@@ -78,13 +71,6 @@ public:
 	bool		m_bFading;
 	CNetworkVar( bool, m_bLight );
 	CNetworkVar( bool, m_bSmoke );
-	CNetworkVar( bool, m_bPropFlare );
-
-	bool		m_bInActiveList;
-	CFlare *	m_pNextFlare;
-
-	void		RemoveFromActiveFlares( void );
-	void		AddToActiveFlares( void );
 };
 
 //---------------------
