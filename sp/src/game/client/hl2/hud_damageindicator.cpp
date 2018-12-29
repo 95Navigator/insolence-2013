@@ -59,8 +59,6 @@ private:
 	float	m_flAttackLeft;
 	float	m_flAttackRight;
 
-	Color	m_clrIndicator;
-
 	CHudTexture	*icon_up;
 	CHudTexture	*icon_down;
 	CHudTexture	*icon_left;
@@ -90,8 +88,6 @@ void CHudDamageIndicator::Reset( void )
 	m_flAttackRear	= 0.0;
 	m_flAttackRight	= 0.0;
 	m_flAttackLeft	= 0.0;
-
-	m_clrIndicator.SetColor( 250, 0, 0, 255 );
 }
 
 void CHudDamageIndicator::Init( void )
@@ -134,7 +130,7 @@ void CHudDamageIndicator::DrawDamageIndicatorFront( float flFade )
 
 		int	x = ( ScreenWidth() / 2 ) - icon_up->Width() / 2;
 		int	y = ( ScreenHeight() / 2 ) - icon_up->Height() * 3;
-		icon_up->DrawSelf( x, y, m_clrIndicator );
+		icon_up->DrawSelf( x, y, GetFgColor() );
 
 		m_flAttackFront = max( 0.0, m_flAttackFront - flFade );
 	}
@@ -163,7 +159,7 @@ void CHudDamageIndicator::DrawDamageIndicatorRear( float flFade )
 
 		int	x = ( ScreenWidth() / 2 ) - icon_down->Width() / 2;
 		int	y = ( ScreenHeight() / 2 ) + icon_down->Height() * 2;
-		icon_down->DrawSelf( x, y, m_clrIndicator );
+		icon_down->DrawSelf( x, y, GetFgColor() );
 
 		m_flAttackRear = max( 0.0, m_flAttackRear - flFade );
 	}
@@ -192,7 +188,7 @@ void CHudDamageIndicator::DrawDamageIndicatorLeft( float flFade )
 
 		int	x = ( ScreenWidth() / 2 ) - icon_left->Width() * 3;
 		int	y = ( ScreenHeight() / 2 ) - icon_left->Height() / 2;
-		icon_left->DrawSelf( x, y, m_clrIndicator );
+		icon_left->DrawSelf( x, y, GetFgColor() );
 
 		m_flAttackLeft = max( 0.0, m_flAttackLeft - flFade );
 	}
@@ -221,7 +217,7 @@ void CHudDamageIndicator::DrawDamageIndicatorRight( float flFade )
 
 		int	x = ( ScreenWidth() / 2 ) + icon_right->Width() * 2;
 		int	y = ( ScreenHeight() / 2 ) - icon_right->Height() / 2;
-		icon_right->DrawSelf( x, y, m_clrIndicator );
+		icon_right->DrawSelf( x, y, GetFgColor() );
 
 		m_flAttackRight = max( 0.0, m_flAttackRight - flFade );
 	}
@@ -336,6 +332,8 @@ void CHudDamageIndicator::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
 	BaseClass::ApplySchemeSettings(pScheme);
 	SetPaintBackgroundEnabled(false);
+
+	SetFgColor( GetSchemeColor( "DamagedFg", pScheme ) );
 
 	int wide, tall;
 	GetHudSize(wide, tall);
