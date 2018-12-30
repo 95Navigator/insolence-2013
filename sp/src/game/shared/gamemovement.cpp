@@ -42,11 +42,11 @@ extern IFileSystem *filesystem;
 // player->CurrentCommandNumber() in the meantime.
 #define tickcount USE_PLAYER_CURRENT_COMMAND_NUMBER__INSTEAD_OF_TICKCOUNT
 
-#if defined( HL2_DLL )
+#if defined( HL2_DLL ) && !defined( INSOLENCE )
 ConVar xc_uncrouch_on_jump( "xc_uncrouch_on_jump", "1", FCVAR_ARCHIVE, "Uncrouch when jump occurs" );
 #endif
 
-#if defined( HL2_DLL ) || defined( HL2_CLIENT_DLL )
+#if ( defined( HL2_DLL ) || defined( HL2_CLIENT_DLL ) ) && !defined( INSOLENCE )
 ConVar player_limit_jump_speed( "player_limit_jump_speed", "1", FCVAR_REPLICATED );
 #endif
 
@@ -2432,7 +2432,7 @@ bool CGameMovement::CheckJumpButton( void )
 	float flMul;
 	if ( g_bMovementOptimizations )
 	{
-#if defined(HL2_DLL) || defined(HL2_CLIENT_DLL)
+#if ( defined(HL2_DLL) || defined(HL2_CLIENT_DLL) ) && !defined( INSOLENCE )
 		Assert( GetCurrentGravity() == 600.0f );
 		flMul = 160.0f;	// approx. 21 units.
 #else
@@ -2465,7 +2465,7 @@ bool CGameMovement::CheckJumpButton( void )
 	}
 
 	// Add a little forward velocity based on your current forward velocity - if you are not sprinting.
-#if defined( HL2_DLL ) || defined( HL2_CLIENT_DLL )
+#if ( defined( HL2_DLL ) || defined( HL2_CLIENT_DLL ) ) && !defined( INSOLENCE )
 	if ( gpGlobals->maxClients == 1 )
 	{
 		CHLMoveData *pMoveData = ( CHLMoveData* )mv;
@@ -2500,18 +2500,24 @@ bool CGameMovement::CheckJumpButton( void )
 	CheckV( player->CurrentCommandNumber(), "CheckJump", mv->m_vecVelocity );
 
 	mv->m_outJumpVel.z += mv->m_vecVelocity[2] - startz;
+#if defined( INSOLENCE )
+	mv->m_outStepHeight += 0.1f;
+#else
 	mv->m_outStepHeight += 0.15f;
+#endif
 
 	OnJump(mv->m_outJumpVel.z);
 
+#if !defined( INSOLENCE )
 	// Set jump time.
 	if ( gpGlobals->maxClients == 1 )
 	{
 		player->m_Local.m_flJumpTime = GAMEMOVEMENT_JUMP_TIME;
 		player->m_Local.m_bInDuckJump = true;
 	}
+#endif
 
-#if defined( HL2_DLL )
+#if defined( HL2_DLL ) && !defined ( INSOLENCE )
 
 	if ( xc_uncrouch_on_jump.GetBool() )
 	{
@@ -2840,7 +2846,7 @@ inline bool CGameMovement::OnLadder( trace_t &trace )
 // HPE_BEGIN
 // [sbodenbender] make ladders easier to climb in cstrike
 //=============================================================================
-#if defined (CSTRIKE_DLL)
+#if defined (CSTRIKE_DLL) || defined ( INSOLENCE )
 ConVar sv_ladder_dampen ( "sv_ladder_dampen", "0.2", FCVAR_REPLICATED, "Amount to dampen perpendicular movement on a ladder", true, 0.0f, true, 1.0f );
 ConVar sv_ladder_angle( "sv_ladder_angle", "-0.707", FCVAR_REPLICATED, "Cos of angle of incidence to ladder perpendicular for applying ladder_dampen", true, -1.0f, true, 1.0f );
 #endif
@@ -2977,7 +2983,7 @@ bool CGameMovement::LadderMove( void )
 			// HPE_BEGIN
 			// [sbodenbender] make ladders easier to climb in cstrike
 			//=============================================================================
-#if defined (CSTRIKE_DLL)
+#if defined (CSTRIKE_DLL) || defined ( INSOLENCE )
 			// break lateral into direction along tmp (up the ladder) and direction along perp (perpendicular to ladder)
 			float tmpDist = DotProduct ( tmp, lateral );
 			float perpDist = DotProduct ( perp, lateral );

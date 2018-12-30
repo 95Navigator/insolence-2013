@@ -106,11 +106,16 @@ static ConVar physicsshadowupdate_render( "physicsshadowupdate_render", "0" );
 bool IsInCommentaryMode( void );
 bool IsListeningToCommentary( void );
 
-#if !defined( CSTRIKE_DLL )
-ConVar cl_sidespeed( "cl_sidespeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
-ConVar cl_upspeed( "cl_upspeed", "320", FCVAR_REPLICATED | FCVAR_CHEAT );
-ConVar cl_forwardspeed( "cl_forwardspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
-ConVar cl_backspeed( "cl_backspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+#if !defined( CSTRIKE_DLL ) && !defined ( INSOLENCE )
+	ConVar cl_sidespeed( "cl_sidespeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+	ConVar cl_upspeed( "cl_upspeed", "320", FCVAR_REPLICATED | FCVAR_CHEAT );
+	ConVar cl_forwardspeed( "cl_forwardspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+	ConVar cl_backspeed( "cl_backspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+#else
+	ConVar cl_sidespeed("cl_sidespeed", "400", FCVAR_REPLICATED | FCVAR_CHEAT);
+	ConVar cl_upspeed("cl_upspeed", "320", FCVAR_REPLICATED | FCVAR_CHEAT);
+	ConVar cl_forwardspeed("cl_forwardspeed", "400", FCVAR_REPLICATED | FCVAR_CHEAT);
+	ConVar cl_backspeed("cl_backspeed", "400", FCVAR_REPLICATED | FCVAR_CHEAT);
 #endif // CSTRIKE_DLL
 
 // This is declared in the engine, too
@@ -1907,7 +1912,7 @@ void CBasePlayer::SetAnimation( PLAYER_ANIM playerAnim )
 WaterMove
 ============
 */
-#ifdef HL2_DLL
+#if defined( HL2_DLL ) && !defined ( INSOLENCE )
 
 // test for HL2 drowning damage increase (aux power used instead)
 #define AIRTIME						7		// lung full of air lasts this many seconds

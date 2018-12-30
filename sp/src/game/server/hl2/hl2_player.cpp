@@ -79,9 +79,15 @@ extern int gEvilImpulse101;
 
 ConVar sv_autojump( "sv_autojump", "0" );
 
-ConVar hl2_walkspeed( "hl2_walkspeed", "150" );
-ConVar hl2_normspeed( "hl2_normspeed", "190" );
-ConVar hl2_sprintspeed( "hl2_sprintspeed", "320" );
+#ifdef INSOLENCE
+	ConVar hl2_walkspeed("hl2_walkspeed", "150");
+	ConVar hl2_normspeed("hl2_normspeed", "320");
+	ConVar hl2_sprintspeed("hl2_sprintspeed", "320");
+#else
+	ConVar hl2_walkspeed("hl2_walkspeed", "150");
+	ConVar hl2_normspeed("hl2_normspeed", "190");
+	ConVar hl2_sprintspeed("hl2_sprintspeed", "320");
+#endif
 
 ConVar hl2_darkness_flashlight_factor ( "hl2_darkness_flashlight_factor", "1" );
 
@@ -2821,11 +2827,13 @@ void CHL2_Player::PlayerUse ( void )
 			}
 		}
 
+#if !defined( INSOLENCE )
 		// Tracker 3926:  We can't +USE something if we're climbing a ladder
 		if ( GetMoveType() == MOVETYPE_LADDER )
 		{
 			return;
 		}
+#endif
 	}
 
 	if( m_flTimeUseSuspended > gpGlobals->curtime )
