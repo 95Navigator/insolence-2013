@@ -21,6 +21,7 @@ public:
 	
 	void	Precache( void );
 	bool	Deploy( void );
+	bool	Reload( void );
 
 	int CapabilitiesGet( void ) { return bits_CAP_WEAPON_RANGE_ATTACK1; }
 
@@ -87,6 +88,18 @@ void CWeaponHMG1::Precache( void )
 
 bool CWeaponHMG1::Deploy( void )
 {
-	//CBaseCombatCharacter *pOwner  = m_hOwner;
 	return BaseClass::Deploy();
+}
+
+bool CWeaponHMG1::Reload( void )
+{
+	bool fRet;
+
+	fRet = BaseClass::Reload();
+	if ( fRet )
+	{
+		WeaponSound( RELOAD );
+	}
+
+	return fRet;
 }

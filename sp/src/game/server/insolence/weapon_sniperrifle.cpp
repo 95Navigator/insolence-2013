@@ -64,6 +64,7 @@ public:
 	void ItemPostFrame( void );
 	void PrimaryAttack( void );
 	bool Reload( void );
+	void FinishReload( void );
 	void Zoom( void );
 	virtual float GetFireRate( void ) { return 1; };
 
@@ -252,41 +253,61 @@ void CWeaponSniperRifle::Precache( void )
 
 
 //-----------------------------------------------------------------------------
-// Purpose: Same as base reload but doesn't change the owner's next attack time. This
-//			lets us zoom out while reloading. This hack is necessary because our
-//			ItemPostFrame is only called when the owner's next attack time has
-//			expired.
+// Purpose: INSOLENCE: Same as base reload but zooms out before actually reloading.
+//			This lets us avoid those odd bugs where the reload itself and the reload
+//			animation would be out of sync. Also an actual reload sound is played.
 // Output : Returns true if the weapon was reloaded, false if no more ammo.
 //-----------------------------------------------------------------------------
 bool CWeaponSniperRifle::Reload( void )
 {
-	CBaseCombatCharacter *pOwner = GetOwner();
-	if (!pOwner)
+	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
+	if (!pPlayer)
 	{
 		return false;
 	}
-		
-	if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) > 0)
+
+	bool fRet;
+
+	if (m_nZoomLevel > 0)
 	{
-		int primary		= min(GetMaxClip1() - m_iClip1, pOwner->GetAmmoCount(m_iPrimaryAmmoType));
-		int secondary	= min(GetMaxClip2() - m_iClip2, pOwner->GetAmmoCount(m_iSecondaryAmmoType));
+		pPlayer->ShowViewModel(true);
 
-		if (primary > 0 || secondary > 0)
-		{
-			// Play reload on different channel as it happens after every fire
-			// and otherwise steals channel away from fire sound
-			WeaponSound(RELOAD);
-			SendWeaponAnim( ACT_VM_RELOAD );
-
-			m_flNextPrimaryAttack	= gpGlobals->curtime + SequenceDuration();
-
-			m_bInReload = true;
-		}
-
-		return true;
+		// Zoom out to the default zoom level
+		WeaponSound(SPECIAL2);
+		pPlayer->SetFOV( this, 0, 0.2f );
 	}
 
-	return false;
+	fRet = BaseClass::Reload();
+	if ( fRet )
+	{
+		WeaponSound(RELOAD);
+	}
+
+	return fRet;
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: INSOLENCE: Same as base reload finish, but zooms back in to the zoom
+//			level the player was before reloading.
+//-----------------------------------------------------------------------------
+void CWeaponSniperRifle::FinishReload( void )
+{
+	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
+	if (!pPlayer)
+	{
+		return;
+	}
+
+	BaseClass::FinishReload();
+
+	if (m_nZoomLevel > 0)
+	{
+		pPlayer->ShowViewModel(false);
+
+		WeaponSound(SPECIAL1);
+		pPlayer->SetFOV( this, g_nZoomFOV[m_nZoomLevel - 1], 0.1f );
+	}
 }
 
 

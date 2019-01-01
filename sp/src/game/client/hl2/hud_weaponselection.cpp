@@ -510,6 +510,12 @@ void CHudWeaponSelection::SelectWeaponSlot( int iSlot )
 	if ( IsInSelectionMode() && pActiveWeapon && pActiveWeapon->GetSlot() == iSlot )
 	{
 		slotPos = pActiveWeapon->GetPosition() + 1;
+
+		pPlayer->EmitSound( "Player.WeaponSelectionMoveSlot" );
+	}
+	else
+	{
+		pPlayer->EmitSound( "Player.WeaponSelectionOpen" );
 	}
 
 	// find the weapon in this slot
@@ -534,8 +540,6 @@ void CHudWeaponSelection::SelectWeaponSlot( int iSlot )
 			OpenSelection();
 		}
 	}
-
-	pPlayer->EmitSound( "Player.WeaponSelectionMoveSlot" );
 }
 
 //-----------------------------------------------------------------------------

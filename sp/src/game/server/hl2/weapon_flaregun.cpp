@@ -620,3 +620,18 @@ void CFlaregun::SecondaryAttack( void )
 	WeaponSound( SINGLE );
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CFlaregun::Reload( void )
+{
+	bool fRet;
+
+	fRet = BaseClass::Reload();
+	if ( fRet )
+	{
+		WeaponSound( RELOAD );
+	}
+
+	return fRet;
+}
