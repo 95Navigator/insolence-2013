@@ -17,31 +17,22 @@
 #include "engine/IEngineSound.h"
 #include "world.h"
 
-#ifdef PORTAL
-	#include "portal_util_shared.h"
-#endif
-
-// memdbgon must be the last include file in a .cpp file!!!
-#include "tier0/memdbgon.h"
-
-#define AR2_GRENADE_MAX_DANGER_RADIUS	300
-
 extern short	g_sModelIndexFireball;			// (in combatweapon.cpp) holds the index for the smoke cloud
 
 // Moved to HL2_SharedGameRules because these are referenced by shared AmmoDef functions
-extern ConVar    sk_plr_dmg_smg1_grenade;
-extern ConVar    sk_npc_dmg_smg1_grenade;
-extern ConVar    sk_max_smg1_grenade;
+extern ConVar    sk_plr_dmg_ar2_grenade;
+extern ConVar    sk_npc_dmg_ar2_grenade;
+extern ConVar    sk_max_ar2_grenade;
 
-ConVar	  sk_smg1_grenade_radius		( "sk_smg1_grenade_radius","0");
+ConVar	  sk_ar2_grenade_radius		( "sk_ar2_grenade_radius","0");
 
+ConVar g_CV_DustExplosion("dust_explosion", "0", 0); // temporary dust explosion switch
 ConVar g_CV_SmokeTrail("smoke_trail", "1", 0); // temporary dust explosion switch
 
 BEGIN_DATADESC( CGrenadeAR2 )
 
-	DEFINE_FIELD( m_hSmokeTrail, FIELD_EHANDLE ),
+	DEFINE_FIELD( m_pSmokeTrail, FIELD_CLASSPTR ),
 	DEFINE_FIELD( m_fSpawnTime, FIELD_TIME ),
-	DEFINE_FIELD( m_fDangerRadius, FIELD_FLOAT ),
 
 	// Function pointers
 	DEFINE_ENTITYFUNC( GrenadeAR2Touch ),
@@ -55,10 +46,7 @@ void CGrenadeAR2::Spawn( void )
 {
 	Precache( );
 	SetSolid( SOLID_BBOX );
-	SetMoveType( MOVETYPE_FLYGRAVITY, MOVECOLLIDE_FLY_BOUNCE );
-
-	// Hits everything but debris
-	SetCollisionGroup( COLLISION_GROUP_PROJECTILE );
+	SetMoveType( MOVETYPE_FLY );
 
 	SetModel( "models/Weapons/ar2_grenade.mdl");
 	UTIL_SetSize(this, Vector(-3, -3, -3), Vector(3, 3, 3));
@@ -69,50 +57,40 @@ void CGrenadeAR2::Spawn( void )
 	SetThink( &CGrenadeAR2::GrenadeAR2Think );
 	SetNextThink( gpGlobals->curtime + 0.1f );
 
-	if( GetOwnerEntity() && GetOwnerEntity()->IsPlayer() )
-	{
-		m_flDamage = sk_plr_dmg_smg1_grenade.GetFloat();
-	}
-	else
-	{
-		m_flDamage = sk_npc_dmg_smg1_grenade.GetFloat();
-	}
-
-	m_DmgRadius		= sk_smg1_grenade_radius.GetFloat();
+	m_flDamage		= sk_plr_dmg_ar2_grenade.GetFloat();
+	m_DmgRadius		= sk_ar2_grenade_radius.GetFloat();
 	m_takedamage	= DAMAGE_YES;
-	m_bIsLive		= true;
+	m_bIsLive		= false;
 	m_iHealth		= 1;
 
-	SetGravity( UTIL_ScaleForGravity( 400 ) );	// use a lower gravity for grenades to make them easier to see
+	SetGravity( 0.5 );
 	SetFriction( 0.8 );
-	SetSequence( 0 );
-
-	m_fDangerRadius = 100;
+	SetSequence( 1 );
 
 	m_fSpawnTime = gpGlobals->curtime;
 
 	// -------------
 	// Smoke trail.
 	// -------------
-	if( g_CV_SmokeTrail.GetInt() && !IsXbox() )
+	if(g_CV_SmokeTrail.GetInt())
 	{
-		m_hSmokeTrail = SmokeTrail::CreateSmokeTrail();
+		m_pSmokeTrail = SmokeTrail::CreateSmokeTrail();
 		
-		if( m_hSmokeTrail )
+		if( m_pSmokeTrail )
 		{
-			m_hSmokeTrail->m_SpawnRate = 48;
-			m_hSmokeTrail->m_ParticleLifetime = 1;
-			m_hSmokeTrail->m_StartColor.Init(0.1f, 0.1f, 0.1f);
-			m_hSmokeTrail->m_EndColor.Init(0,0,0);
-			m_hSmokeTrail->m_StartSize = 12;
-			m_hSmokeTrail->m_EndSize = m_hSmokeTrail->m_StartSize * 4;
-			m_hSmokeTrail->m_SpawnRadius = 4;
-			m_hSmokeTrail->m_MinSpeed = 4;
-			m_hSmokeTrail->m_MaxSpeed = 24;
-			m_hSmokeTrail->m_Opacity = 0.2f;
+			m_pSmokeTrail->m_SpawnRate = 48;
+			m_pSmokeTrail->m_ParticleLifetime = 1;
+			m_pSmokeTrail->m_StartColor.Init(0.1f, 0.1f, 0.1f);
+			m_pSmokeTrail->m_EndColor.Init(0,0,0);
+			m_pSmokeTrail->m_StartSize = 12;
+			m_pSmokeTrail->m_EndSize = m_pSmokeTrail->m_StartSize * 4;
+			m_pSmokeTrail->m_SpawnRadius = 4;
+			m_pSmokeTrail->m_MinSpeed = 4;
+			m_pSmokeTrail->m_MaxSpeed = 24;
+			m_pSmokeTrail->m_Opacity = 0.2f;
 
-			m_hSmokeTrail->SetLifetime(10.0f);
-			m_hSmokeTrail->FollowEntity(this);
+			m_pSmokeTrail->SetLifetime(10.0f);
+			m_pSmokeTrail->FollowEntity(this);
 		}
 	}
 }
@@ -126,7 +104,7 @@ void CGrenadeAR2::Spawn( void )
 //-----------------------------------------------------------------------------
 void CGrenadeAR2::GrenadeAR2Think( void )
 {
-	SetNextThink( gpGlobals->curtime + 0.05f );
+	SetNextThink( gpGlobals->curtime + 0.1f );
 
 	if (!m_bIsLive)
 	{
@@ -141,22 +119,13 @@ void CGrenadeAR2::GrenadeAR2Think( void )
 	// the floor already when I went solid so blow up
 	if (m_bIsLive)
 	{
-		if (GetAbsVelocity().Length() == 0.0 ||
-			GetGroundEntity() != NULL )
+		if (GetAbsVelocity().Length() == 0.0)
 		{
 			Detonate();
 		}
 	}
 
-	// The old way of making danger sounds would scare the crap out of EVERYONE between you and where the grenade
-	// was going to hit. The radius of the danger sound now 'blossoms' over the grenade's lifetime, making it seem
-	// dangerous to a larger area downrange than it does from where it was fired.
-	if( m_fDangerRadius <= AR2_GRENADE_MAX_DANGER_RADIUS )
-	{
-		m_fDangerRadius += ( AR2_GRENADE_MAX_DANGER_RADIUS * 0.05 );
-	}
-
-	CSoundEnt::InsertSound( SOUND_DANGER, GetAbsOrigin() + GetAbsVelocity() * 0.5, m_fDangerRadius, 0.2, this, SOUNDENT_CHANNEL_REPEATED_DANGER );
+	CSoundEnt::InsertSound( SOUND_DANGER, GetAbsOrigin() + GetAbsVelocity() * 0.5, GetAbsVelocity().Length(), 0.2 );
 }
 
 void CGrenadeAR2::Event_Killed( const CTakeDamageInfo &info )
@@ -197,10 +166,19 @@ void CGrenadeAR2::Detonate(void)
 	m_bIsLive		= false;
 	m_takedamage	= DAMAGE_NO;	
 
-	if(m_hSmokeTrail)
+	if(m_pSmokeTrail)
 	{
-		UTIL_Remove(m_hSmokeTrail);
-		m_hSmokeTrail = NULL;
+		UTIL_RemoveImmediate(m_pSmokeTrail);
+		m_pSmokeTrail = NULL;
+	}
+
+	// Create a particle explosion.
+	if ( g_CV_DustExplosion.GetBool() )
+	{
+		if(AR2Explosion *pExplosion = AR2Explosion::CreateAR2Explosion(GetAbsOrigin()))
+		{
+			pExplosion->SetLifetime(10);
+		}
 	}
 
 	CPASFilter filter( GetAbsOrigin() );
@@ -217,17 +195,13 @@ void CGrenadeAR2::Detonate(void)
 	Vector vecForward = GetAbsVelocity();
 	VectorNormalize(vecForward);
 	trace_t		tr;
-	UTIL_TraceLine ( GetAbsOrigin(), GetAbsOrigin() + 60*vecForward, MASK_SHOT, 
+	UTIL_TraceLine ( GetAbsOrigin(), GetAbsOrigin() + 60*vecForward, MASK_SOLID, 
 		this, COLLISION_GROUP_NONE, &tr);
-
 
 	if ((tr.m_pEnt != GetWorldEntity()) || (tr.hitbox != 0))
 	{
 		// non-world needs smaller decals
-		if( tr.m_pEnt && !tr.m_pEnt->IsNPC() )
-		{
-			UTIL_DecalTrace( &tr, "SmallScorch" );
-		}
+		UTIL_DecalTrace( &tr, "SmallScorch" );
 	}
 	else
 	{
@@ -235,19 +209,33 @@ void CGrenadeAR2::Detonate(void)
 	}
 
 	UTIL_ScreenShake( GetAbsOrigin(), 25.0, 150.0, 1.0, 750, SHAKE_START );
+//	CSoundEnt::InsertSound ( SOUND_DANGER, GetAbsOrigin(), BASEGRENADE_EXPLOSION_VOLUME, 3.0 );
 
 	RadiusDamage ( CTakeDamageInfo( this, GetThrower(), m_flDamage, DMG_BLAST ), GetAbsOrigin(), m_DmgRadius, CLASS_NONE, NULL );
 
-	UTIL_Remove( this );
+//ExplosionCreate( GetAbsOrigin(), GetAbsAngles(), NULL, 100, 
+//UTIL_Remove( this );
+UTIL_Remove( this );
+/*
+	CPASAttenuationFilter filter2( this );
+	EmitSound( filter2, entindex(), CHAN_WEAPON, "common/null.wav", 1.0, ATTN_NORM );
+
+	// Mark for removal in 2 seconds so the entity is there when the sound is played on the client.
+	m_iHealth = 0;
+	SetTouch( NULL );
+	SetThink( SUB_Remove );	
+	SetNextThink( gpGlobals->curtime + 2 ) );	// The ent needs to be here for the sound.
+	//UTIL_Remove( this );
+*/
 }
 
 void CGrenadeAR2::Precache( void )
 {
-	PrecacheModel("models/Weapons/ar2_grenade.mdl"); 
+	engine->PrecacheModel("models/Weapons/ar2_grenade.mdl"); 
 }
 
 
 CGrenadeAR2::CGrenadeAR2(void)
 {
-	m_hSmokeTrail  = NULL;
+	m_pSmokeTrail  = NULL;
 }

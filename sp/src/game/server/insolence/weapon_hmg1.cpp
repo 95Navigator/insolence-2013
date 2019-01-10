@@ -54,6 +54,7 @@ public:
 				}
 				WeaponSound(SINGLE_NPC);
 				pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, vecSpread, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2 );
+				pOperator->DoMuzzleFlash();
 			}
 			break;
 			default:

@@ -335,6 +335,8 @@ void CWeaponSniperRifle::PrimaryAttack( void )
 		// MUST call sound before removing a round from the clip of a CMachineGun dvs: does this apply to the sniper rifle? I don't know.
 		WeaponSound(SINGLE);
 
+		pPlayer->DoMuzzleFlash();
+
 		SendWeaponAnim( ACT_VM_PRIMARYATTACK );
 
 		// player "shoot" animation
@@ -442,6 +444,7 @@ void CWeaponSniperRifle::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCom
 			}
 			WeaponSound( SINGLE_NPC );
 			pOperator->FireBullets( SNIPER_BULLET_COUNT_NPC, vecShootOrigin, vecShootDir, vecSpread, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, SNIPER_TRACER_FREQUENCY_NPC );
+			pOperator->DoMuzzleFlash();
 			break;
 		}
 

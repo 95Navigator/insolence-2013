@@ -307,9 +307,6 @@ void CBaseHLCombatWeapon::AddViewmodelBob( CBaseViewModel *viewmodel, Vector &or
 
 	float	flBob = CalcViewmodelBob();
 
-	// Apply bob, but scaled down to 40%
-	VectorMA( origin, flBob * 0.4, forward, origin );
-
 	// Z bob a bit more
 	origin[2] += flBob;
 

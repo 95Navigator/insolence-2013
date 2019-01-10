@@ -6143,17 +6143,15 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		EquipSuit();
 
 		// Give the player everything!
+		GiveAmmo( 255,	"MediumRound");
 		GiveAmmo( 60,	"LargeRound");
+		GiveAmmo( 3,	"ar2_grenade");
 		GiveAmmo( 20,	"FlareRound");
 		GiveAmmo( 30,	"SniperRound");
 		GiveAmmo( 150,	"GaussEnergy");
 
 		GiveAmmo( 255,	"Pistol");
-		GiveAmmo( 255,	"AR2");
-		GiveAmmo( 5,	"AR2AltFire");
-		GiveAmmo( 255,	"SMG1");
 		GiveAmmo( 255,	"Buckshot");
-		GiveAmmo( 3,	"smg1_grenade");
 		GiveAmmo( 3,	"rpg_round");
 		GiveAmmo( 5,	"grenade");
 #ifdef HL2_EPISODIC

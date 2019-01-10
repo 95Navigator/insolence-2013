@@ -394,6 +394,8 @@ void CWeaponGaussGun::PrimaryAttack( void )
 	
 	SendWeaponAnim( ACT_VM_PRIMARYATTACK );
 
+	pOwner->DoMuzzleFlash();
+
 	m_flNextPrimaryAttack = gpGlobals->curtime + GetFireRate();
 
 	pOwner->RemoveAmmo( 1, m_iPrimaryAmmoType );
