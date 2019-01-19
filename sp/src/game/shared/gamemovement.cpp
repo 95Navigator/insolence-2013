@@ -4649,6 +4649,16 @@ void CGameMovement::PlayerMove( void )
 
 #endif
 
+	// Slow down, I'm pulling it! (a box maybe) but only when I'm standing on ground
+	if ( (player->GetGroundEntity() != NULL) && (mv->m_nButtons & IN_USE) && !m_iSpeedCropped )
+	{
+		float frac = 0.33333333f;
+		mv->m_flForwardMove *= frac;
+		mv->m_flSideMove    *= frac;
+		mv->m_flUpMove      *= frac;
+		m_iSpeedCropped = true;
+	}
+
 	// Handle movement modes.
 	switch (player->GetMoveType())
 	{

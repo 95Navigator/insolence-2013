@@ -34,9 +34,9 @@ extern ConVar in_forceuser;
 #define SCREEN_OVERLAY_MATERIAL "vgui/screens/vgui_overlay"
 
 #if defined( CLIENT_DLL )
-	ConVar viewmodel_offset_x( "viewmodel_offset_x", "0.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in X
-	ConVar viewmodel_offset_y( "viewmodel_offset_y", "0.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in Y
-	ConVar viewmodel_offset_z( "viewmodel_offset_z", "0.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in Z
+	ConVar viewmodel_offset_x( "viewmodel_offset_x", "-2.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in X
+	ConVar viewmodel_offset_y( "viewmodel_offset_y", "-10.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in Y
+	ConVar viewmodel_offset_z( "viewmodel_offset_z", "-1.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in Z
 #endif
 
 //-----------------------------------------------------------------------------
