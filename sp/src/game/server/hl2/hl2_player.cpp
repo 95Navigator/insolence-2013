@@ -473,6 +473,8 @@ void CHL2_Player::EquipSuit( bool bPlayEffects )
 {
 	MDLCACHE_CRITICAL_SECTION();
 	BaseClass::EquipSuit();
+
+	InitSprinting();
 	
 	m_HL2Local.m_bDisplayReticle = true;
 
@@ -485,6 +487,8 @@ void CHL2_Player::EquipSuit( bool bPlayEffects )
 void CHL2_Player::RemoveSuit( void )
 {
 	BaseClass::RemoveSuit();
+
+	InitSprinting();
 
 	m_HL2Local.m_bDisplayReticle = false;
 }
@@ -526,11 +530,11 @@ void CHL2_Player::HandleSpeedChanges( void )
 #endif
 
 	bool bIsWalking = IsWalking();
-	// have suit, pressing button, not sprinting or ducking
+	// pressing button
 	bool bWantWalking;
 
 #if defined ( INSOLENCE )
-	bWantWalking = (m_nButtons & IN_WALK) && !IsSprinting() && !(m_nButtons & IN_DUCK);
+	bWantWalking = (m_nButtons & IN_WALK) && !IsSprinting();
 #else
 	if( IsSuitEquipped() )
 	{
@@ -973,11 +977,7 @@ void CHL2_Player::Activate( void )
 {
 	BaseClass::Activate();
 
-#if defined ( INSOLENCE )
-	StopWalking();
-#else
 	InitSprinting();
-#endif
 
 #ifdef HL2_EPISODIC
 
@@ -1158,11 +1158,7 @@ void CHL2_Player::Spawn(void)
 
 	m_pPlayerAISquad = g_AI_SquadManager.FindCreateSquad(AllocPooledString(PLAYER_SQUADNAME));
 
-#if defined ( INSOLENCE )
-	StopWalking();
-#else
 	InitSprinting();
-#endif
 
 	// Setup our flashlight values
 #ifdef HL2_EPISODIC
@@ -1187,7 +1183,11 @@ void CHL2_Player::UpdateLocatorPosition( const Vector &vecPosition )
 //-----------------------------------------------------------------------------
 void CHL2_Player::InitSprinting( void )
 {
+#if defined ( INSOLENCE )
+	StopWalking();
+#else
 	StopSprinting();
+#endif
 }
 
 
