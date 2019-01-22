@@ -6143,33 +6143,36 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		EquipSuit();
 
 		// Give the player everything!
+		GiveAmmo( 255,	"SmallRound");
 		GiveAmmo( 255,	"MediumRound");
-		GiveAmmo( 60,	"LargeRound");
+		GiveAmmo( 255,	"LargeRound");
+		GiveAmmo( 255,	"Buckshot");
 		GiveAmmo( 3,	"ar2_grenade");
-		GiveAmmo( 20,	"FlareRound");
-		GiveAmmo( 30,	"SniperRound");
+		GiveAmmo( 3,	"ml_grenade");
+		GiveAmmo( 5,	"grenade");
 		GiveAmmo( 150,	"GaussEnergy");
 
-		GiveAmmo( 255,	"Pistol");
-		GiveAmmo( 255,	"Buckshot");
-		GiveAmmo( 3,	"rpg_round");
-		GiveAmmo( 5,	"grenade");
+		GiveAmmo( 20,	"FlareRound");
+		GiveAmmo( 30,	"SniperRound");
 #ifdef HL2_EPISODIC
 		GiveAmmo( 5,	"Hopwire" );
 #endif		
-		GiveNamedItem( "weapon_smg1" );
-		GiveNamedItem( "weapon_sniperrifle" );
-		GiveNamedItem( "weapon_gauss" );
+
 		GiveNamedItem( "weapon_frag" );
-		GiveNamedItem( "weapon_hmg1" );
 		GiveNamedItem( "weapon_crowbar" );
-		GiveNamedItem( "weapon_flaregun" );
 		GiveNamedItem( "weapon_pistol" );
 		GiveNamedItem( "weapon_ar2" );
-		GiveNamedItem( "weapon_binoculars" );
 		GiveNamedItem( "weapon_shotgun" );
-		GiveNamedItem( "weapon_bugbait" );
+		GiveNamedItem( "weapon_smg1" );
+		GiveNamedItem( "weapon_gauss" );
+
 		GiveNamedItem( "weapon_rpg" );
+
+		GiveNamedItem( "weapon_sniperrifle" );
+		GiveNamedItem( "weapon_hmg1" );
+		GiveNamedItem( "weapon_flaregun" );
+		GiveNamedItem( "weapon_binoculars" );
+		GiveNamedItem( "weapon_bugbait" );
 #ifdef HL2_EPISODIC
 		// GiveNamedItem( "weapon_magnade" );
 #endif
