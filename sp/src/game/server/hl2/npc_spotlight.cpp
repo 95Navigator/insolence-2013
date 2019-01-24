@@ -6,13 +6,13 @@
 //=============================================================================//
 
 #include "cbase.h"
-#include "ai_basenpc.h"
+#include "AI_BaseNPC.h"
 #include "AI_Default.h"
 #include "AI_Senses.h"
 #include "ai_node.h"	  // for hint defintions
 #include "ai_network.h"
 #include "AI_Hint.h"
-#include "ai_squad.h"
+#include "AI_Squad.h"
 #include "beam_shared.h"
 #include "globalstate.h"
 #include "soundent.h"
@@ -270,7 +270,6 @@ int CNPC_Spotlight::UpdateTransmitState(void)
 	return SetTransmitState( FL_EDICT_PVSCHECK );
 }
 
-
 //------------------------------------------------------------------------------
 // Purpose :
 // Input   :
@@ -445,7 +444,7 @@ CBaseEntity* CNPC_Spotlight::BestInspectTarget(void)
 	{
 		flSearchDist = SPOTLIGHT_ENTITY_SEARCH_DIST;
 	}
-	for ( CEntitySphereQuery sphere( vSearchOrigin, SPOTLIGHT_ENTITY_SEARCH_DIST ); pEntity = sphere.GetCurrentEntity(); sphere.NextEntity() )
+	for ( CEntitySphereQuery sphere( vSearchOrigin, SPOTLIGHT_ENTITY_SEARCH_DIST ); ( pEntity = sphere.GetCurrentEntity() ) != NULL; sphere.NextEntity() )
 	{
 		if (pEntity->GetFlags() & (FL_CLIENT|FL_NPC))
 		{
@@ -629,15 +628,27 @@ void CNPC_Spotlight::SetInspectTargetToPos(const Vector &vInspectPos, float fIns
 //------------------------------------------------------------------------------
 void CNPC_Spotlight::ClearInspectTarget(void)
 {
+	// Unlock hint node
+	if (GetHintNode())
+	{
+		GetHintNode()->Unlock(SPOTLIGHT_HINT_INSPECT_LENGTH);
+	}
+
 	// If I'm losing an enemy, fire a message
 	if (m_bHadEnemy)
 	{
 		m_bHadEnemy = false;
 
-		EHANDLE hEnemy;
-		hEnemy.Set( GetEnemy() );
-
-		m_pOutputLost.Set(hEnemy,this,this);
+		if (GetEnemy())
+		{
+			EHANDLE hEnemy;
+			hEnemy.Set( GetEnemy() );
+			m_pOutputLost.Set(hEnemy,this,this);
+		}
+		else
+		{
+			m_pOutputLost.Set(*((EHANDLE *)NULL),this,this);
+		}
 	}
 
 	// If I'm in combat state, go to alert
@@ -648,7 +659,7 @@ void CNPC_Spotlight::ClearInspectTarget(void)
 	
 	SetTarget( NULL );
 	SetEnemy( NULL );
-	ClearHintNode( SPOTLIGHT_HINT_INSPECT_LENGTH );
+	SetHintNode( NULL );
 	m_vInspectPos			= vec3_origin;
 	m_flYawDir				= random->RandomInt(0,1) ? 1 : -1;
 	m_flPitchDir			= random->RandomInt(0,1) ? 1 : -1;
@@ -841,7 +852,7 @@ void CNPC_Spotlight::UpdateTargets(void)
 			if (gpGlobals->curtime		>	m_flNextHintSearchTime	&&
 				!HaveInspectTarget()							)
 			{
-				SetHintNode(CAI_HintManager::FindHint(this, HINT_NONE, 0, SPOTLIGHT_HINT_SEARCH_DIST));
+				SetHintNode( CAI_HintManager::FindHint(this, HINT_NONE, 0, SPOTLIGHT_HINT_SEARCH_DIST) );
 
 				if (GetHintNode())
 				{
@@ -941,10 +952,10 @@ void CNPC_Spotlight::SpotlightDestroy(void)
 {
 	if (m_pSpotlight)
 	{
-		UTIL_Remove(m_pSpotlight);
+		UTIL_RemoveImmediate(m_pSpotlight);
 		m_pSpotlight = NULL;
 		
-		UTIL_Remove(m_pSpotlightTarget);
+		UTIL_RemoveImmediate(m_pSpotlightTarget);
 		m_pSpotlightTarget = NULL;
 	}
 }
@@ -1385,20 +1396,13 @@ void CNPC_Spotlight::Spawn(void)
 	// Check for user error
 	if (m_flSpotlightMaxLength <= 0)
 	{
-		DevMsg("CNPC_Spotlight::Spawn: Invalid spotlight length <= 0, setting to 500\n");
+		DevMsg("ERROR: Invalid spotlight length <= 0, setting to 500\n");
 		m_flSpotlightMaxLength = 500;
 	}
-	
 	if (m_flSpotlightGoalWidth <= 0)
 	{
-		DevMsg("CNPC_Spotlight::Spawn: Invalid spotlight width <= 0, setting to 10\n");
+		DevMsg("ERROR: Invalid spotlight width <= 0, setting to 10\n");
 		m_flSpotlightGoalWidth = 10;
-	}
-
-	if (m_flSpotlightGoalWidth > MAX_BEAM_WIDTH)
-	{
-		DevMsg("CNPC_Spotlight::Spawn: Invalid spotlight width %.1f (max %.1f)\n", m_flSpotlightGoalWidth, MAX_BEAM_WIDTH );
-		m_flSpotlightGoalWidth = MAX_BEAM_WIDTH; 
 	}
 
 	Precache();
@@ -1468,7 +1472,7 @@ void CNPC_Spotlight::Spawn(void)
 	else
 	{
 		NPCInit();
-		SetThink(CallNPCThink);
+		SetThink(&CAI_BaseNPC::CallNPCThink);
 	}
 
 	AddEffects( EF_NODRAW );

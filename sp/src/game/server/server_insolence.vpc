@@ -267,6 +267,7 @@ $Project "Server (Insolence)"
 		
 		$Folder	"Insolence DLL"
 		{
+			$File	"hl2\npc_spotlight.cpp"
 			$File	"insolence\weapon_binoculars.cpp"
 			$File	"hl2\weapon_flaregun.cpp"
 			$File	"hl2\weapon_flaregun.h"
