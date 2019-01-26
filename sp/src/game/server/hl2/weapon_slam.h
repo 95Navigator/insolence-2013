@@ -13,7 +13,6 @@
 
 #ifndef	WEAPONSLAM_H
 #define	WEAPONSLAM_H
-#ifndef HL2MP
 
 #include "basegrenade_shared.h"
 #include "basehlcombatweapon.h"
@@ -79,5 +78,5 @@ public:
 	DECLARE_DATADESC();
 };
 
-#endif  //HL2MP
+
 #endif	//WEAPONSLAM_H

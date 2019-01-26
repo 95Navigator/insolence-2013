@@ -267,6 +267,12 @@ $Project "Server (Insolence)"
 		
 		$Folder	"Insolence DLL"
 		{
+			$File	"hl2\grenade_molotov.h"
+			$File	"hl2\grenade_molotov.cpp"
+			$File	"hl2\grenade_satchel.h"
+			$File	"hl2\grenade_satchel.cpp"
+			$File	"hl2\grenade_tripmine.h"
+			$File	"hl2\grenade_tripmine.cpp"
 			$File	"hl2\npc_spotlight.cpp"
 			$File	"insolence\weapon_binoculars.cpp"
 			$File	"hl2\weapon_flaregun.cpp"
@@ -274,7 +280,11 @@ $Project "Server (Insolence)"
 			$File	"hl2\weapon_gauss.h"
 			$File	"insolence\weapon_gauss.cpp"
 			$File	"insolence\weapon_hmg1.cpp"
-			$File	"insolence\weapon_sniperrifle.cpp"
+			$File	"hl2\weapon_molotov.h"
+			$File	"hl2\weapon_molotov.cpp"
+			$File	"hl2\weapon_slam.h"
+			$File	"hl2\weapon_slam.cpp"
+			$File	"hl2\weapon_sniperrifle.cpp"
 		}
 	}
 }

@@ -8,10 +8,10 @@
 //=============================================================================//
 
 #include "cbase.h"
-#include	"npcevent.h"
+#include	"NPCEvent.h"
 #include	"basehlcombatweapon.h"
 #include	"basecombatcharacter.h"
-#include	"ai_basenpc.h"
+#include	"AI_BaseNPC.h"
 #include	"AI_Memory.h"
 #include	"player.h"
 #include	"gamerules.h"		// For g_pGameRules
@@ -48,14 +48,16 @@ PRECACHE_WEAPON_REGISTER(weapon_molotov);
 acttable_t	CWeaponMolotov::m_acttable[] = 
 {
 	{ ACT_RANGE_ATTACK1, ACT_RANGE_ATTACK_THROW, true },
+
 };
 IMPLEMENT_ACTTABLE(CWeaponMolotov);
 
 
 void CWeaponMolotov::Precache( void )
 {
-	PrecacheModel("models/props_junk/w_garb_beerbottle.mdl");	//<<TEMP>> need real model
 	BaseClass::Precache();
+
+	PrecacheScriptSound( "Weapon_Molotov.Special1" );
 }
 
 void CWeaponMolotov::Spawn( void )
@@ -76,7 +78,7 @@ void CWeaponMolotov::Spawn( void )
 //------------------------------------------------------------------------------
 void CWeaponMolotov::SetPickupTouch( void )
 {
-	SetTouch(MolotovTouch);
+	SetTouch(&CWeaponMolotov::MolotovTouch);
 }
 
 //-----------------------------------------------------------------------------
@@ -107,7 +109,7 @@ void CWeaponMolotov::MolotovTouch( CBaseEntity *pOther )
 		}
 		else
 		{
-			pBCC->GiveAmmo( 1, m_iSecondaryAmmoType );
+			pBCC->GiveAmmo( 1, m_iPrimaryAmmoType );
 			SetThink (NULL);
 		}
 	}
@@ -336,6 +338,8 @@ void CWeaponMolotov::PrimaryAttack( void )
 		return;
 	}
 
+	SendWeaponAnim( ACT_VM_THROW );
+
 	Vector vecSrc		= pPlayer->WorldSpaceCenter();
 	Vector vecFacing	= pPlayer->BodyDirection3D( );
 	vecSrc				= vecSrc + vecFacing * 18.0;
@@ -353,7 +357,10 @@ void CWeaponMolotov::PrimaryAttack( void )
 	vecAiming.z += 0.20; // Raise up so passes through reticle
 
 	ThrowMolotov(vecSrc, vecAiming*800);
-	pPlayer->RemoveAmmo( 1, m_iSecondaryAmmoType );
+
+	WeaponSound( SPECIAL1 );
+
+	pPlayer->RemoveAmmo( 1, m_iPrimaryAmmoType );
 
 	
 	// Don't fire again until fire animation has completed
@@ -387,13 +394,13 @@ void CWeaponMolotov::DrawAmmo( void )
 	// Make sure I have ammo of the current type
 	// -------------------------------------------
 	CBaseCombatCharacter *pOwner = GetOwner();
-	if (pOwner->GetAmmoCount(m_iSecondaryAmmoType) <=0)
+	if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) <=0)
 	{
 		pOwner->Weapon_Drop( this );
 		UTIL_Remove(this);
 		return;
 	}
-	Msg("Drawing Molotov...\n");
+
 	m_bNeedDraw = false;
 
 	//<<TEMP>> - till real animation is avaible
@@ -423,7 +430,7 @@ void CWeaponMolotov::ItemPostFrame( void )
 	else if ((pOwner->m_nButtons & IN_ATTACK) && (m_flNextPrimaryAttack <= gpGlobals->curtime))
 	{
 		// Uses secondary ammo only
-		if (pOwner->GetAmmoCount(m_iSecondaryAmmoType))
+		if (pOwner->GetAmmoCount(m_iPrimaryAmmoType))
 		{
 			PrimaryAttack();
 		}

@@ -31,9 +31,9 @@ BEGIN_DATADESC( CSatchelCharge )
 	DEFINE_FIELD( m_bIsAttached, FIELD_BOOLEAN ),
 
 	// Function Pointers
-	DEFINE_FUNCTION( SatchelTouch ),
-	DEFINE_FUNCTION( SatchelThink ),
-	DEFINE_FUNCTION( SatchelUse ),
+	DEFINE_ENTITYFUNC( SatchelTouch ),
+	DEFINE_THINKFUNC( SatchelThink ),
+	DEFINE_USEFUNC( SatchelUse ),
 
 END_DATADESC()
 
@@ -56,14 +56,14 @@ void CSatchelCharge::Spawn( void )
 	// motor
 	SetMoveType( MOVETYPE_FLYGRAVITY, MOVECOLLIDE_FLY_BOUNCE );
 	SetSolid( SOLID_BBOX ); 
-	SetCollisionGroup( COLLISION_GROUP_PROJECTILE );
+
 	SetModel( "models/Weapons/w_slam.mdl" );
 
 	UTIL_SetSize(this, Vector( -6, -6, -2), Vector(6, 6, 2));
 
-	SetTouch( SatchelTouch );
-	SetUse( SatchelUse );
-	SetThink( SatchelThink );
+	SetTouch( &CSatchelCharge::SatchelTouch );
+	SetUse( &CSatchelCharge::SatchelUse );
+	SetThink( &CSatchelCharge::SatchelThink );
 	SetNextThink( gpGlobals->curtime + 0.1f );
 
 	m_flDamage		= sk_plr_dmg_satchel.GetFloat();
@@ -71,7 +71,7 @@ void CSatchelCharge::Spawn( void )
 	m_takedamage	= DAMAGE_YES;
 	m_iHealth		= 1;
 
-	SetGravity( UTIL_ScaleForGravity( 560 ) );	// slightly lower gravity
+	SetGravity( 0.7 );
 	SetFriction( 1.0 );
 	SetSequence( 1 );
 
@@ -91,7 +91,7 @@ void CSatchelCharge::InitSlideSound(void)
 {
 	CSoundEnvelopeController &controller = CSoundEnvelopeController::GetController();
 	CPASAttenuationFilter filter( this );
-	m_soundSlide = controller.SoundCreate( filter, entindex(), CHAN_STATIC, "SatchelCharge.Slide", ATTN_NORM );	
+	m_soundSlide = controller.SoundCreate( filter, entindex(), CHAN_STATIC, "weapons/slam/slide.wav", ATTN_NORM );	
 }
 
 //-----------------------------------------------------------------------------
@@ -114,7 +114,7 @@ void CSatchelCharge::KillSlideSound(void)
 void CSatchelCharge::SatchelUse( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
 	KillSlideSound();
-	SetThink( Detonate );
+	SetThink( &CSatchelCharge::Detonate );
 	SetNextThink( gpGlobals->curtime );
 }
 
@@ -137,7 +137,7 @@ void CSatchelCharge::SatchelTouch( CBaseEntity *pOther )
 		if (pPlayer)
 		{
 			// Give the player ammo
-			pPlayer->GiveAmmo(1, m_pMyWeaponSLAM->m_iSecondaryAmmoType);
+			pPlayer->GiveAmmo(1, m_pMyWeaponSLAM->m_iPrimaryAmmoType);
 
 			CPASAttenuationFilter filter( pPlayer, "SatchelCharge.Pickup" );
 			EmitSound( filter, pPlayer->entindex(), "SatchelCharge.Pickup" );
@@ -330,11 +330,11 @@ void CSatchelCharge::SatchelThink( void )
 void CSatchelCharge::Precache( void )
 {
 	PrecacheModel("models/Weapons/w_slam.mdl");
+	// FIXME:  Are these used?
+	PrecacheSound("weapons/slam/slide.wav");
 
 	PrecacheScriptSound( "SatchelCharge.Pickup" );
 	PrecacheScriptSound( "SatchelCharge.Bounce" );
-
-	PrecacheScriptSound( "SatchelCharge.Slide" );
 }
 
 void CSatchelCharge::BounceSound( void )

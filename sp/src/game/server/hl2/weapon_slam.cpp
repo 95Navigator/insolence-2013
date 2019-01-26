@@ -35,8 +35,8 @@ BEGIN_DATADESC( CWeapon_SLAM )
 	DEFINE_FIELD( m_flWallSwitchTime, FIELD_TIME ),
 
 	// Function Pointers
-	DEFINE_FUNCTION( SLAMThink ),
-	DEFINE_FUNCTION( SlamTouch ),
+	DEFINE_THINKFUNC( SLAMThink ),
+	DEFINE_ENTITYFUNC( SlamTouch ),
 
 END_DATADESC()
 
@@ -67,11 +67,11 @@ void CWeapon_SLAM::Spawn( )
 
 	SetThink( NULL );
 
-	m_tSlamState		= SLAM_TRIPMINE_READY;
+	m_tSlamState		= SLAM_SATCHEL_THROW;
 	m_flWallSwitchTime	= 0;
 
-	// Give 1 piece of default ammo when first picked up
-	m_iClip2 = 1;
+	// Give one piece of default ammo when first picked up
+	// m_iClip1 = 1;
 }
 
 void CWeapon_SLAM::Precache( void )
@@ -81,13 +81,12 @@ void CWeapon_SLAM::Precache( void )
 	UTIL_PrecacheOther( "npc_tripmine" );
 	UTIL_PrecacheOther( "npc_satchel" );
 
-	PrecacheScriptSound( "Weapon_SLAM.ThrowMode" );
 	PrecacheScriptSound( "Weapon_SLAM.TripMineMode" );
 	PrecacheScriptSound( "Weapon_SLAM.SatchelDetonate" );
-	PrecacheScriptSound( "Weapon_SLAM.TripMineAttach" );
 	PrecacheScriptSound( "Weapon_SLAM.SatchelThrow" );
+	PrecacheScriptSound( "Weapon_SLAM.ThrowMode" );
+	PrecacheScriptSound( "Weapon_SLAM.TripMineAttach" );
 	PrecacheScriptSound( "Weapon_SLAM.SatchelAttach" );
-
 }
 
 //------------------------------------------------------------------------------
@@ -95,37 +94,35 @@ void CWeapon_SLAM::Precache( void )
 // Input   :
 // Output  :
 //------------------------------------------------------------------------------
+
 void CWeapon_SLAM::SetPickupTouch( void )
 {
-	SetTouch(SlamTouch);
+	SetTouch(&CWeapon_SLAM::SlamTouch);
 }
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Override so give correct ammo
 // Input  : pOther - the entity that touched me
 // Output :
 //-----------------------------------------------------------------------------
+
 void CWeapon_SLAM::SlamTouch( CBaseEntity *pOther )
 {
-	CBaseCombatCharacter* pBCC = ToBaseCombatCharacter( pOther );
-
-	// Can I even pick stuff up?
-	if ( pBCC && !pBCC->IsAllowedToPickupWeapons() )
-		return;
-
 	// ---------------------------------------------------
 	//  First give weapon to touching entity if allowed
 	// ---------------------------------------------------
 	BaseClass::DefaultTouch(pOther);
 
 	// ----------------------------------------------------
-	//  Give slam ammo if touching client
+	//  Give molotov ammo if touching client
 	// ----------------------------------------------------
 	if (pOther->GetFlags() & FL_CLIENT)
 	{
 		// ------------------------------------------------
 		//  If already owned weapon of this type remove me
 		// ------------------------------------------------
+		CBaseCombatCharacter* pBCC = ToBaseCombatCharacter( pOther );
 		CWeapon_SLAM* oldWeapon = (CWeapon_SLAM*)pBCC->Weapon_OwnsThisType( GetClassname() );
 		if (oldWeapon != this)
 		{
@@ -133,11 +130,12 @@ void CWeapon_SLAM::SlamTouch( CBaseEntity *pOther )
 		}
 		else
 		{
-			pBCC->GiveAmmo( 1, m_iSecondaryAmmoType );
+			pBCC->GiveAmmo( 1, m_iPrimaryAmmoType );
 			SetThink(NULL);
 		}
 	}
 }
+
 
 //------------------------------------------------------------------------------
 // Purpose :
@@ -174,7 +172,7 @@ void CWeapon_SLAM::PrimaryAttack( void )
 		return;
 	}
 
-	if (pOwner->GetAmmoCount(m_iSecondaryAmmoType) <= 0)
+	if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) <= 0)
 	{
 		return;
 	}
@@ -203,8 +201,6 @@ void CWeapon_SLAM::PrimaryAttack( void )
 //-----------------------------------------------------------------------------
 void CWeapon_SLAM::SecondaryAttack( void )
 {
-	return; // Nothin for now. SLAM's just a tripmine.
-
 	CBaseCombatCharacter *pOwner  = GetOwner();
 	if (!pOwner)
 	{
@@ -215,7 +211,7 @@ void CWeapon_SLAM::SecondaryAttack( void )
 	{
 		StartSatchelDetonate();
 	}
-	else if (pOwner->GetAmmoCount(m_iSecondaryAmmoType) > 0)
+	else if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) > 0)
 	{
 		if (m_tSlamState == SLAM_TRIPMINE_READY)
 		{
@@ -344,8 +340,9 @@ void CWeapon_SLAM::TripmineAttach( void )
 
 	m_bAttachTripmine = false;
 
-	Vector vecSrc = pOwner->Weapon_ShootPosition();
-	Vector vecAiming = pOwner->EyeDirection3D();
+	Vector vecSrc	 = pOwner->Weapon_ShootPosition();
+	//vecSrc.z -= 3.0;
+	Vector vecAiming = pOwner->BodyDirection2D( );
 
 	trace_t tr;
 
@@ -353,6 +350,8 @@ void CWeapon_SLAM::TripmineAttach( void )
 	
 	if (tr.fraction < 1.0)
 	{
+		// ALERT( at_console, "hit %f\n", tr.flFraction );
+
 		CBaseEntity *pEntity = tr.m_pEnt;
 		if (pEntity && !(pEntity->GetFlags() & FL_CONVEYOR))
 		{
@@ -365,7 +364,7 @@ void CWeapon_SLAM::TripmineAttach( void )
 			CTripmineGrenade *pMine = (CTripmineGrenade *)pEnt;
 			pMine->m_hOwner = GetOwner();
 
-			pOwner->RemoveAmmo( 1, m_iSecondaryAmmoType );
+			pOwner->RemoveAmmo( 1, m_iPrimaryAmmoType );
 
 			EmitSound( "Weapon_SLAM.TripMineAttach" );
 		}
@@ -440,9 +439,7 @@ void CWeapon_SLAM::SatchelThrow( void )
 	// BUGBUG: is this because vecSrc is not from Weapon_ShootPosition()???
 	vecSrc.z += 24.0f;
 
-	Vector vecThrow;
-	GetOwner()->GetVelocity( &vecThrow, NULL );
-	vecThrow += vecFacing * 500;
+	Vector vecThrow = vecFacing * 500 + GetOwner()->GetAbsVelocity();
 
 	// Player may have turned to face a wall during the throw anim in which case
 	// we don't want to throw the SLAM into the wall
@@ -454,12 +451,12 @@ void CWeapon_SLAM::SatchelThrow( void )
 
 	CSatchelCharge *pSatchel = (CSatchelCharge*)Create( "npc_satchel", vecSrc, vec3_angle, GetOwner() );
 	pSatchel->SetThrower( GetOwner() );
-	pSatchel->ApplyAbsVelocityImpulse( vecThrow );
+	pSatchel->SetAbsVelocity( vecThrow );
 	pSatchel->SetLocalAngularVelocity( QAngle( 0, 400, 0 ) );
 	pSatchel->m_bIsLive = true;
 	pSatchel->m_pMyWeaponSLAM = this;
 
-	pPlayer->RemoveAmmo( 1, m_iSecondaryAmmoType );
+	pPlayer->RemoveAmmo( 1, m_iPrimaryAmmoType );
 
 	// Play throw sound
 	EmitSound( "Weapon_SLAM.SatchelThrow" );
@@ -539,7 +536,7 @@ void CWeapon_SLAM::SatchelAttach( void )
 			pSatchel->SetOwnerEntity( ((CBaseEntity*)GetOwner()) );
 			pSatchel->m_pMyWeaponSLAM	= this;
 
-			pOwner->RemoveAmmo( 1, m_iSecondaryAmmoType );
+			pOwner->RemoveAmmo( 1, m_iPrimaryAmmoType );
 		}
 	}
 }
@@ -625,7 +622,7 @@ void CWeapon_SLAM::SLAMThink( void )
 		// a wall. If we are we go into satchel_attach mode
 		CBaseCombatCharacter *pOwner  = GetOwner();
 
-		if ((m_tSlamState != SLAM_TRIPMINE_READY) && (pOwner && pOwner->GetAmmoCount(m_iSecondaryAmmoType) > 0))
+		if ((m_tSlamState != SLAM_TRIPMINE_READY) && (pOwner && pOwner->GetAmmoCount(m_iPrimaryAmmoType) > 0))
 		{	
 			if (CanAttachSLAM())
 			{
@@ -748,7 +745,7 @@ void CWeapon_SLAM::WeaponSwitch( void )
 	}
 
 	// If not armed and have no ammo
-	if (!m_bDetonatorArmed && pOwner->GetAmmoCount(m_iSecondaryAmmoType) <= 0)
+	if (!m_bDetonatorArmed && pOwner->GetAmmoCount(m_iPrimaryAmmoType) <= 0)
 	{
 		pOwner->ClearActiveWeapon();
 	}
@@ -813,7 +810,7 @@ void CWeapon_SLAM::WeaponIdle( void )
 		else if (m_bNeedReload)
 		{	
 			// If owner had ammo draw the correct SLAM type
-			if (pOwner->GetAmmoCount(m_iSecondaryAmmoType) > 0)
+			if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) > 0)
 			{
 				switch( m_tSlamState)
 				{
@@ -873,7 +870,7 @@ void CWeapon_SLAM::WeaponIdle( void )
 				UTIL_Remove(this);
 			}
 		}
-		else if (pOwner->GetAmmoCount(m_iSecondaryAmmoType) <= 0)
+		else if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) <= 0)
 		{
 			pOwner->Weapon_Drop( this );
 			UTIL_Remove(this);
@@ -934,7 +931,7 @@ bool CWeapon_SLAM::Deploy( void )
 	m_bDetonatorArmed = AnyUndetonatedCharges();
 
 
-	SetThink( SLAMThink );
+	SetThink( &CWeapon_SLAM::SLAMThink );
 	SetNextThink( gpGlobals->curtime + 0.1f );
 
 	SetModel( GetViewModel() );
@@ -948,7 +945,7 @@ bool CWeapon_SLAM::Deploy( void )
 	m_bNeedReload = false;
 	if (m_bDetonatorArmed)
 	{
-		if (pOwner->GetAmmoCount(m_iSecondaryAmmoType) <= 0)
+		if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) <= 0)
 		{
 			iActivity = ACT_SLAM_DETONATOR_DRAW;
 			m_bNeedReload = true;
