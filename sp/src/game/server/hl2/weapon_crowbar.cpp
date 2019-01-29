@@ -6,198 +6,251 @@
 //=============================================================================//
 
 #include "cbase.h"
-#include "basehlcombatweapon.h"
+#include "basecombatweapon_shared.h"
 #include "player.h"
 #include "gamerules.h"
 #include "ammodef.h"
 #include "mathlib/mathlib.h"
 #include "in_buttons.h"
 #include "soundent.h"
-#include "basebludgeonweapon.h"
 #include "vstdlib/random.h"
-#include "npcevent.h"
-#include "ai_basenpc.h"
 #include "weapon_crowbar.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
 ConVar    sk_plr_dmg_crowbar		( "sk_plr_dmg_crowbar","0");
-ConVar    sk_npc_dmg_crowbar		( "sk_npc_dmg_crowbar","0");
 
-//-----------------------------------------------------------------------------
-// CWeaponCrowbar
-//-----------------------------------------------------------------------------
+#define	CROWBAR_RANGE		32.0f
+#define	CROWBAR_REFIRE_MISS	0.5f
+#define	CROWBAR_REFIRE_HIT	0.25f
 
-IMPLEMENT_SERVERCLASS_ST(CWeaponCrowbar, DT_WeaponCrowbar)
-END_SEND_TABLE()
 
-#ifndef HL2MP
 LINK_ENTITY_TO_CLASS( weapon_crowbar, CWeaponCrowbar );
 PRECACHE_WEAPON_REGISTER( weapon_crowbar );
-#endif
 
-acttable_t CWeaponCrowbar::m_acttable[] = 
-{
-	{ ACT_MELEE_ATTACK1,	ACT_MELEE_ATTACK_SWING, true },
-	{ ACT_IDLE,				ACT_IDLE_ANGRY_MELEE,	false },
-	{ ACT_IDLE_ANGRY,		ACT_IDLE_ANGRY_MELEE,	false },
-};
+IMPLEMENT_SERVERCLASS_ST( CWeaponCrowbar, DT_WeaponCrowbar )
+END_SEND_TABLE()
 
-IMPLEMENT_ACTTABLE(CWeaponCrowbar);
+BEGIN_DATADESC( CWeaponCrowbar )
+
+	// UNDONE: Save/restore these?
+//	trace_t			m_trLineHit;		// Used for decals - geometry hit
+//	trace_t			m_trHullHit;		// Used for hitting NPCs
+//	Activity		m_nHitActivity;
+
+	// Function Pointers
+	DEFINE_FUNCTION( Hit ),
+
+END_DATADESC()
+
+static const Vector g_bludgeonMins(-16,-16,-16);
+static const Vector g_bludgeonMaxs(16,16,16);
 
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
-CWeaponCrowbar::CWeaponCrowbar( void )
+CWeaponCrowbar::CWeaponCrowbar()
 {
+	m_bFiresUnderwater = true;
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Get the damage amount for the animation we're doing
-// Input  : hitActivity - currently played activity
-// Output : Damage amount
+// Purpose: Precache the weapon
 //-----------------------------------------------------------------------------
-float CWeaponCrowbar::GetDamageForActivity( Activity hitActivity )
+void CWeaponCrowbar::Precache( void )
 {
-	if ( ( GetOwner() != NULL ) && ( GetOwner()->IsPlayer() ) )
-		return sk_plr_dmg_crowbar.GetFloat();
-
-	return sk_npc_dmg_crowbar.GetFloat();
+	//Call base class first
+	BaseClass::Precache();
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Add in a view kick for this weapon
-//-----------------------------------------------------------------------------
-void CWeaponCrowbar::AddViewKick( void )
+//------------------------------------------------------------------------------
+// Purpose : Update weapon
+//------------------------------------------------------------------------------
+void CWeaponCrowbar::ItemPostFrame( void )
 {
-	CBasePlayer *pPlayer  = ToBasePlayer( GetOwner() );
+	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
 	
-	if ( pPlayer == NULL )
+	if ( pOwner == NULL )
 		return;
 
-	QAngle punchAng;
+	if ( (pOwner->m_nButtons & IN_ATTACK) && (m_flNextPrimaryAttack <= gpGlobals->curtime) )
+	{
+		PrimaryAttack();
+	} 
+	else 
+	{
+		WeaponIdle();
+		return;
+	}
+}
 
-	punchAng.x = random->RandomFloat( 1.0f, 2.0f );
-	punchAng.y = random->RandomFloat( -2.0f, -1.0f );
-	punchAng.z = 0.0f;
+//------------------------------------------------------------------------------
+// Purpose :
+// Input   :
+// Output  :
+//------------------------------------------------------------------------------
+void CWeaponCrowbar::PrimaryAttack()
+{
+	Swing();
+}
+
+
+//------------------------------------------------------------------------------
+// Purpose: Implement impact function
+//------------------------------------------------------------------------------
+void CWeaponCrowbar::Hit( void )
+{
+	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
 	
-	pPlayer->ViewPunch( punchAng ); 
+	//Make sound for the AI
+	CSoundEnt::InsertSound( SOUND_BULLET_IMPACT, m_traceHit.endpos, 400, 0.2f, pPlayer );
+
+	CBaseEntity	*pHitEntity = m_traceHit.m_pEnt;
+
+	//Apply damage to a hit target
+	if ( pHitEntity != NULL )
+	{
+		Vector hitDirection;
+		pPlayer->EyeVectors( &hitDirection, NULL, NULL );
+		VectorNormalize( hitDirection );
+
+		ClearMultiDamage();
+		CTakeDamageInfo info( GetOwner(), GetOwner(), sk_plr_dmg_crowbar.GetFloat(), DMG_CLUB );
+		CalculateMeleeDamageForce( &info, hitDirection, m_traceHit.endpos );
+		pHitEntity->DispatchTraceAttack( info, hitDirection, &m_traceHit ); 
+		ApplyMultiDamage();
+
+		// Now hit all triggers along the ray that... 
+		TraceAttackToTriggers( CTakeDamageInfo( GetOwner(), GetOwner(), sk_plr_dmg_crowbar.GetFloat(), DMG_CLUB ), m_traceHit.startpos, m_traceHit.endpos, hitDirection );
+
+		//Play an impact sound	
+		ImpactSound( pHitEntity->Classify() == CLASS_NONE );
+	}
+
+	//Apply an impact effect
+	ImpactEffect();
 }
 
-
 //-----------------------------------------------------------------------------
-// Attempt to lead the target (needed because citizens can't hit manhacks with the crowbar!)
+// Purpose: Play the impact sound
+// Input  : isWorld - whether the hit was for the world or an entity
 //-----------------------------------------------------------------------------
-ConVar sk_crowbar_lead_time( "sk_crowbar_lead_time", "0.9" );
-
-int CWeaponCrowbar::WeaponMeleeAttack1Condition( float flDot, float flDist )
+void CWeaponCrowbar::ImpactSound( bool isWorld )
 {
-	// Attempt to lead the target (needed because citizens can't hit manhacks with the crowbar!)
-	CAI_BaseNPC *pNPC	= GetOwner()->MyNPCPointer();
-	CBaseEntity *pEnemy = pNPC->GetEnemy();
-	if (!pEnemy)
-		return COND_NONE;
+	WeaponSound_t soundType = ( isWorld ) ? MELEE_HIT_WORLD : MELEE_HIT;
 
-	Vector vecVelocity;
-	vecVelocity = pEnemy->GetSmoothedVelocity( );
-
-	// Project where the enemy will be in a little while
-	float dt = sk_crowbar_lead_time.GetFloat();
-	dt += random->RandomFloat( -0.3f, 0.2f );
-	if ( dt < 0.0f )
-		dt = 0.0f;
-
-	Vector vecExtrapolatedPos;
-	VectorMA( pEnemy->WorldSpaceCenter(), dt, vecVelocity, vecExtrapolatedPos );
-
-	Vector vecDelta;
-	VectorSubtract( vecExtrapolatedPos, pNPC->WorldSpaceCenter(), vecDelta );
-
-	if ( fabs( vecDelta.z ) > 70 )
-	{
-		return COND_TOO_FAR_TO_ATTACK;
-	}
-
-	Vector vecForward = pNPC->BodyDirection2D( );
-	vecDelta.z = 0.0f;
-	float flExtrapolatedDist = Vector2DNormalize( vecDelta.AsVector2D() );
-	if ((flDist > 64) && (flExtrapolatedDist > 64))
-	{
-		return COND_TOO_FAR_TO_ATTACK;
-	}
-
-	float flExtrapolatedDot = DotProduct2D( vecDelta.AsVector2D(), vecForward.AsVector2D() );
-	if ((flDot < 0.7) && (flExtrapolatedDot < 0.7))
-	{
-		return COND_NOT_FACING_ATTACK;
-	}
-
-	return COND_CAN_MELEE_ATTACK1;
+	WeaponSound( soundType );
 }
 
-
-//-----------------------------------------------------------------------------
-// Animation event handlers
-//-----------------------------------------------------------------------------
-void CWeaponCrowbar::HandleAnimEventMeleeHit( animevent_t *pEvent, CBaseCombatCharacter *pOperator )
+Activity CWeaponCrowbar::ChooseIntersectionPointAndActivity( trace_t &hitTrace, const Vector &mins, const Vector &maxs, CBasePlayer *pOwner )
 {
-	// Trace up or down based on where the enemy is...
-	// But only if we're basically facing that direction
-	Vector vecDirection;
-	AngleVectors( GetAbsAngles(), &vecDirection );
+	int			i, j, k;
+	float		distance;
+	const float	*minmaxs[2] = {mins.Base(), maxs.Base()};
+	trace_t		tmpTrace;
+	Vector		vecHullEnd = hitTrace.endpos;
+	Vector		vecEnd;
 
-	CBaseEntity *pEnemy = pOperator->MyNPCPointer() ? pOperator->MyNPCPointer()->GetEnemy() : NULL;
-	if ( pEnemy )
+	distance = 1e6f;
+	Vector vecSrc = hitTrace.startpos;
+
+	vecHullEnd = vecSrc + ((vecHullEnd - vecSrc)*2);
+	UTIL_TraceLine( vecSrc, vecHullEnd, MASK_SHOT_HULL, pOwner, COLLISION_GROUP_NONE, &tmpTrace );
+	if ( tmpTrace.fraction == 1.0 )
 	{
-		Vector vecDelta;
-		VectorSubtract( pEnemy->WorldSpaceCenter(), pOperator->Weapon_ShootPosition(), vecDelta );
-		VectorNormalize( vecDelta );
-		
-		Vector2D vecDelta2D = vecDelta.AsVector2D();
-		Vector2DNormalize( vecDelta2D );
-		if ( DotProduct2D( vecDelta2D, vecDirection.AsVector2D() ) > 0.8f )
+		for ( i = 0; i < 2; i++ )
 		{
-			vecDirection = vecDelta;
+			for ( j = 0; j < 2; j++ )
+			{
+				for ( k = 0; k < 2; k++ )
+				{
+					vecEnd.x = vecHullEnd.x + minmaxs[i][0];
+					vecEnd.y = vecHullEnd.y + minmaxs[j][1];
+					vecEnd.z = vecHullEnd.z + minmaxs[k][2];
+
+					UTIL_TraceLine( vecSrc, vecEnd, MASK_SHOT_HULL, pOwner, COLLISION_GROUP_NONE, &tmpTrace );
+					if ( tmpTrace.fraction < 1.0 )
+					{
+						float thisDistance = (tmpTrace.endpos - vecSrc).Length();
+						if ( thisDistance < distance )
+						{
+							hitTrace = tmpTrace;
+							distance = thisDistance;
+						}
+					}
+				}
+			}
 		}
-	}
-
-	Vector vecEnd;
-	VectorMA( pOperator->Weapon_ShootPosition(), 50, vecDirection, vecEnd );
-	CBaseEntity *pHurt = pOperator->CheckTraceHullAttack( pOperator->Weapon_ShootPosition(), vecEnd, 
-		Vector(-16,-16,-16), Vector(36,36,36), sk_npc_dmg_crowbar.GetFloat(), DMG_CLUB, 0.75 );
-	
-	// did I hit someone?
-	if ( pHurt )
-	{
-		// play sound
-		WeaponSound( MELEE_HIT );
-
-		// Fake a trace impact, so the effects work out like a player's crowbaw
-		trace_t traceHit;
-		UTIL_TraceLine( pOperator->Weapon_ShootPosition(), pHurt->GetAbsOrigin(), MASK_SHOT_HULL, pOperator, COLLISION_GROUP_NONE, &traceHit );
-		ImpactEffect( traceHit );
 	}
 	else
 	{
-		WeaponSound( MELEE_MISS );
+		hitTrace = tmpTrace;
 	}
+
+
+	return ACT_VM_HITCENTER;
 }
 
 
 //-----------------------------------------------------------------------------
-// Animation event
+// Purpose: 
 //-----------------------------------------------------------------------------
-void CWeaponCrowbar::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator )
+void CWeaponCrowbar::ImpactEffect( void )
 {
-	switch( pEvent->event )
-	{
-	case EVENT_WEAPON_MELEE_HIT:
-		HandleAnimEventMeleeHit( pEvent, pOperator );
-		break;
+	//FIXME: need new decals
+	UTIL_ImpactTrace( &m_traceHit, DMG_CLUB );
+}
 
-	default:
-		BaseClass::Operator_HandleAnimEvent( pEvent, pOperator );
-		break;
+//------------------------------------------------------------------------------
+// Purpose : Starts the swing of the weapon and determines the animation
+//------------------------------------------------------------------------------
+void CWeaponCrowbar::Swing( void )
+{
+	// Try a ray
+	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
+	if ( !pOwner )
+		return;
+
+	Vector swingStart = pOwner->Weapon_ShootPosition( );
+	Vector forward;
+
+	pOwner->EyeVectors( &forward, NULL, NULL );
+
+	UTIL_TraceLine( swingStart, swingStart + forward * CROWBAR_RANGE, MASK_SHOT_HULL, pOwner, COLLISION_GROUP_NONE, &m_traceHit );
+	m_nHitActivity = ACT_VM_HITCENTER;
+
+	if ( m_traceHit.fraction == 1.0 )
+	{
+		UTIL_TraceHull( swingStart, swingStart + forward * CROWBAR_RANGE, g_bludgeonMins, g_bludgeonMaxs, MASK_SHOT_HULL, pOwner, COLLISION_GROUP_NONE, &m_traceHit );
+		if ( m_traceHit.fraction < 1.0 )
+		{
+			m_nHitActivity = ChooseIntersectionPointAndActivity( m_traceHit, g_bludgeonMins, g_bludgeonMaxs, pOwner );
+		}
 	}
+
+
+	// -------------------------
+	//	Miss
+	// -------------------------
+	if ( m_traceHit.fraction == 1.0f )
+	{
+		m_nHitActivity = ACT_VM_MISSCENTER;
+
+		//Play swing sound
+		WeaponSound( SINGLE );
+
+		//Setup our next attack times
+		m_flNextPrimaryAttack = gpGlobals->curtime + CROWBAR_REFIRE_MISS;
+	}
+	else
+	{
+		Hit();
+
+		//Setup our next attack times
+		m_flNextPrimaryAttack = gpGlobals->curtime + CROWBAR_REFIRE_HIT;
+	}
+
+	//Send the anim
+	SendWeaponAnim( m_nHitActivity );
 }

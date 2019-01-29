@@ -110,9 +110,9 @@ static ConVar v_centerspeed( "v_centerspeed","500" );
 #ifdef TF_CLIENT_DLL
 // 54 degrees approximates a 35mm camera - we determined that this makes the viewmodels
 // and motions look the most natural.
-ConVar v_viewmodel_fov( "viewmodel_fov", "90", FCVAR_ARCHIVE );
+ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_ARCHIVE );
 #else
-ConVar v_viewmodel_fov( "viewmodel_fov", "90", FCVAR_CHEAT );
+ConVar v_viewmodel_fov( "viewmodel_fov", "90", FCVAR_ARCHIVE );
 #endif
 ConVar mat_viewportscale( "mat_viewportscale", "1.0", FCVAR_ARCHIVE, "Scale down the main viewport (to reduce GPU impact on CPU profiling)", true, (1.0f / 640.0f), true, 1.0f );
 ConVar mat_viewportupscale( "mat_viewportupscale", "1", FCVAR_ARCHIVE, "Scale the viewport back up" );
@@ -744,7 +744,7 @@ void CViewRender::SetUpViews()
 	float flFOVOffset = fDefaultFov - view.fov;
 
 	//Adjust the viewmodel's FOV to move with any FOV offsets on the viewer's end
-	view.fovViewmodel = g_pClientMode->GetViewModelFOV() - flFOVOffset;
+	view.fovViewmodel = abs(g_pClientMode->GetViewModelFOV() - flFOVOffset);
 
 	if ( UseVR() )
 	{

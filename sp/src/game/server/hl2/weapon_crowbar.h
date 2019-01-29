@@ -17,38 +17,35 @@
 #error weapon_crowbar.h must not be included in hl2mp. The windows compiler will use the wrong class elsewhere if it is.
 #endif
 
-#define	CROWBAR_RANGE	75.0f
-#define	CROWBAR_REFIRE	0.4f
-
 //-----------------------------------------------------------------------------
 // CWeaponCrowbar
 //-----------------------------------------------------------------------------
 
-class CWeaponCrowbar : public CBaseHLBludgeonWeapon
+class CWeaponCrowbar : public CBaseCombatWeapon
 {
+	DECLARE_CLASS( CWeaponCrowbar, CBaseCombatWeapon );
 public:
-	DECLARE_CLASS( CWeaponCrowbar, CBaseHLBludgeonWeapon );
-
-	DECLARE_SERVERCLASS();
-	DECLARE_ACTTABLE();
 
 	CWeaponCrowbar();
 
-	float		GetRange( void )		{	return	CROWBAR_RANGE;	}
-	float		GetFireRate( void )		{	return	CROWBAR_REFIRE;	}
+	void			Precache( void );
+	virtual void	ItemPostFrame( void );
+	void			PrimaryAttack( void );
 
-	void		AddViewKick( void );
-	float		GetDamageForActivity( Activity hitActivity );
-
-	virtual int WeaponMeleeAttack1Condition( float flDot, float flDist );
-	void		SecondaryAttack( void )	{	return;	}
-
-	// Animation event
-	virtual void Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
+public:
+	trace_t		m_traceHit;
+	Activity	m_nHitActivity;
 
 private:
-	// Animation event handlers
-	void HandleAnimEventMeleeHit( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
+	virtual void		Swing( void );
+	virtual	void		Hit( void );
+	virtual	void		ImpactEffect( void );
+	virtual	void		ImpactSound( bool isWorld );
+	virtual Activity	ChooseIntersectionPointAndActivity( trace_t &hitTrace, const Vector &mins, const Vector &maxs, CBasePlayer *pOwner );
+
+public:
+	DECLARE_SERVERCLASS();
+	DECLARE_DATADESC();
 };
 
 #endif // WEAPON_CROWBAR_H
