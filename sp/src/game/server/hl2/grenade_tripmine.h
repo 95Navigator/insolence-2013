@@ -24,8 +24,6 @@ public:
 	CTripmineGrenade();
 	void Spawn( void );
 	void Precache( void );
-
-	int OnTakeDamage_Alive( const CTakeDamageInfo &info );
 	
 	void WarningThink( void );
 	void PowerupThink( void );

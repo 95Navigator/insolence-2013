@@ -14,7 +14,7 @@
 #ifndef NPC_BULLSQUID_H
 #define NPC_BULLSQUID_H
 
-#include "ai_basenpc.h"
+#include "AI_BaseNPC.h"
 
 
 class CNPC_Bullsquid : public CAI_BaseNPC
@@ -28,9 +28,9 @@ public:
 	Class_T	Classify( void );
 	
 	void IdleSound( void );
-	void PainSound( const CTakeDamageInfo &info );
+	void PainSound( void );
 	void AlertSound( void );
-	void DeathSound( const CTakeDamageInfo &info );
+	void DeathSound ( void );
 	void AttackSound( void );
 	void GrowlSound( void );
 
@@ -53,6 +53,7 @@ public:
 
 	int SelectSchedule( void );
 	bool FInViewCone ( Vector pOrigin );
+	bool FVisible ( Vector vecOrigin );
 
 	void StartTask ( const Task_t *pTask );
 	void RunTask ( const Task_t *pTask );

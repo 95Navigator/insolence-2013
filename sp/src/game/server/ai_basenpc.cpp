@@ -608,6 +608,13 @@ void CAI_BaseNPC::Event_Killed( const CTakeDamageInfo &info )
 	
 	// Make sure this condition is fired too (OnTakeDamage breaks out before this happens on death)
 	SetCondition( COND_LIGHT_DAMAGE );
+
+	if ( !ShouldFadeOnDeath() )
+	{
+		// body is gonna be around for a while, so have it stink for a bit.
+		CSoundEnt::InsertSound ( SOUND_CARCASS, GetAbsOrigin(), 384, 30 );
+	}
+
 	SetIdealState( NPC_STATE_DEAD );
 
 	// Some characters rely on getting a state transition, even to death.

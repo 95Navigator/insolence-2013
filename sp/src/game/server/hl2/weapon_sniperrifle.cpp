@@ -13,10 +13,10 @@
 //=============================================================================//
 
 #include "cbase.h"
-#include "npcevent.h"
+#include "NPCEvent.h"
 #include "basehlcombatweapon.h"
 #include "basecombatcharacter.h"
-#include "ai_basenpc.h"
+#include "AI_BaseNPC.h"
 #include "player.h"
 #include "gamerules.h"				// For g_pGameRules
 #include "in_buttons.h"
@@ -59,7 +59,7 @@ public:
 
 	void Precache( void );
 
-	int CapabilitiesGet( void ) const;
+	int CapabilitiesGet( void );
 
 	const Vector &GetBulletSpread( void );
 
@@ -125,7 +125,7 @@ CWeaponSniperRifle::CWeaponSniperRifle( void )
 // Purpose: 
 // Output : int
 //-----------------------------------------------------------------------------
-int CWeaponSniperRifle::CapabilitiesGet( void ) const
+int CWeaponSniperRifle::CapabilitiesGet( void )
 {
 	return bits_CAP_WEAPON_RANGE_ATTACK1;
 }
@@ -142,11 +142,9 @@ bool CWeaponSniperRifle::Holster( CBaseCombatWeapon *pSwitchingTo )
 	{
 		if ( m_nZoomLevel != 0 )
 		{
-			if ( pPlayer->SetFOV( this, 0 ) )
-			{
-				pPlayer->ShowViewModel(true);		
-				m_nZoomLevel = 0;
-			}
+			pPlayer->ShowViewModel(true);
+			pPlayer->SetFOV( this, 0, 0.2f );
+			m_nZoomLevel = 0;
 		}
 	}
 
@@ -225,7 +223,7 @@ void CWeaponSniperRifle::ItemPostFrame( void )
 		if ( !HasAnyAmmo() && m_flNextPrimaryAttack < gpGlobals->curtime ) 
 		{
 			// weapon isn't useable, switch.
-			if ( !(GetWeaponFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY) && pPlayer->SwitchToNextBestWeapon( this ) )
+			if ( !(GetFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY) && pPlayer->SwitchToNextBestWeapon( this ) )
 			{
 				m_flNextPrimaryAttack = gpGlobals->curtime + 0.3;
 				return;
@@ -234,7 +232,7 @@ void CWeaponSniperRifle::ItemPostFrame( void )
 		else
 		{
 			// weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
-			if ( m_iClip1 == 0 && !(GetWeaponFlags() & ITEM_FLAG_NOAUTORELOAD) && m_flNextPrimaryAttack < gpGlobals->curtime )
+			if ( m_iClip1 == 0 && !(GetFlags() & ITEM_FLAG_NOAUTORELOAD) && m_flNextPrimaryAttack < gpGlobals->curtime )
 			{
 				Reload();
 				return;
@@ -257,41 +255,37 @@ void CWeaponSniperRifle::Precache( void )
 
 
 //-----------------------------------------------------------------------------
-// Purpose: Same as base reload but doesn't change the owner's next attack time. This
-//			lets us zoom out while reloading. This hack is necessary because our
-//			ItemPostFrame is only called when the owner's next attack time has
-//			expired.
+// Purpose: INSOLENCE: Same as base reload but zooms out before actually reloading.
+//			This lets us avoid those odd bugs where the reload itself and the reload
+//			animation would be out of sync. Also an actual reload sound is played.
 // Output : Returns true if the weapon was reloaded, false if no more ammo.
 //-----------------------------------------------------------------------------
 bool CWeaponSniperRifle::Reload( void )
 {
-	CBaseCombatCharacter *pOwner = GetOwner();
-	if (!pOwner)
+	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
+	if (!pPlayer)
 	{
 		return false;
 	}
-		
-	if (pOwner->GetAmmoCount(m_iPrimaryAmmoType) > 0)
+
+	bool fRet;
+
+	if (m_nZoomLevel > 0)
 	{
-		int primary		= MIN(GetMaxClip1() - m_iClip1, pOwner->GetAmmoCount(m_iPrimaryAmmoType));
-		int secondary	= MIN(GetMaxClip2() - m_iClip2, pOwner->GetAmmoCount(m_iSecondaryAmmoType));
+		pPlayer->ShowViewModel(true);
 
-		if (primary > 0 || secondary > 0)
-		{
-			// Play reload on different channel as it happens after every fire
-			// and otherwise steals channel away from fire sound
-			WeaponSound(RELOAD);
-			SendWeaponAnim( ACT_VM_RELOAD );
-
-			m_flNextPrimaryAttack	= gpGlobals->curtime + SequenceDuration();
-
-			m_bInReload = true;
-		}
-
-		return true;
+		// Zoom out to the default zoom level
+		WeaponSound(SPECIAL2);
+		pPlayer->SetFOV( this, 0, 0.2f );
 	}
 
-	return false;
+	fRet = BaseClass::Reload();
+	if ( fRet )
+	{
+		WeaponSound(RELOAD);
+	}
+
+	return fRet;
 }
 
 
@@ -366,28 +360,23 @@ void CWeaponSniperRifle::Zoom( void )
 
 	if (m_nZoomLevel >= sizeof(g_nZoomFOV) / sizeof(g_nZoomFOV[0]))
 	{
-		if ( pPlayer->SetFOV( this, 0 ) )
-		{
-			pPlayer->ShowViewModel(true);
-			
-			// Zoom out to the default zoom level
-			WeaponSound(SPECIAL2);	
-			m_nZoomLevel = 0;
-		}
+		pPlayer->ShowViewModel(true);
+
+		// Zoom out to the default zoom level
+		WeaponSound(SPECIAL2);
+		pPlayer->SetFOV( this, 0, 0.2f );
+		m_nZoomLevel = 0;
 	}
 	else
 	{
-		if ( pPlayer->SetFOV( this, g_nZoomFOV[m_nZoomLevel] ) )
+		if (m_nZoomLevel == 0)
 		{
-			if (m_nZoomLevel == 0)
-			{
-				pPlayer->ShowViewModel(false);
-			}
-
-			WeaponSound(SPECIAL1);
-			
-			m_nZoomLevel++;
+			pPlayer->ShowViewModel(false);
 		}
+
+		WeaponSound(SPECIAL1);
+		pPlayer->SetFOV( this, g_nZoomFOV[m_nZoomLevel], 0.1f );
+		m_nZoomLevel++;
 	}
 
 	m_fNextZoom = gpGlobals->curtime + SNIPER_ZOOM_RATE;

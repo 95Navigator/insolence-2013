@@ -15,30 +15,6 @@
 #include "engine/IEngineSound.h"
 #include "weapon_flaregun.h"
 
-// memdbgon must be the last include file in a .cpp file!!!
-#include "tier0/memdbgon.h"
-
-
-/********************************************************************
- NOTE: if you are looking at this file becase you would like flares 
- to be considered as fires (and thereby trigger gas traps), be aware 
- that the env_flare class is actually found in weapon_flaregun.cpp 
- and is really a repurposed piece of ammunition. (env_flare isn't the 
- rod-like safety flare prop, but rather the bit of flame on the end.)
-
- You will have some difficulty making it work here, because CFlare 
- does not inherit from CFire and will thus not be enumerated by 
- CFireSphere::EnumElement(). In order to have flares be detected and 
- used by this system, you will need to promote certain member functions 
- of CFire into an interface class from which both CFire and CFlare 
- inherit. You will also need to modify CFireSphere::EnumElement so that
- it properly disambiguates between fires and flares.
-
- For some partial work towards this end, see changelist 192474.
-
- ********************************************************************/
-
-
 #define	FLARE_LAUNCH_SPEED	1500
 
 LINK_ENTITY_TO_CLASS( env_flare, CFlare );
@@ -55,14 +31,11 @@ BEGIN_DATADESC( CFlare )
 	DEFINE_FIELD( m_bFading,		FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_bLight,			FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_bSmoke,			FIELD_BOOLEAN ),
-	DEFINE_FIELD( m_bPropFlare,		FIELD_BOOLEAN ),
-	DEFINE_FIELD( m_bInActiveList,	FIELD_BOOLEAN ),
-	DEFINE_FIELD( m_pNextFlare,		FIELD_CLASSPTR ),
-	
+
 	//Input functions
 	DEFINE_INPUTFUNC( FIELD_FLOAT, "Start", InputStart ),
 	DEFINE_INPUTFUNC( FIELD_FLOAT, "Die", InputDie ),
-	DEFINE_INPUTFUNC( FIELD_FLOAT, "Launch", InputLaunch),
+	DEFINE_INPUTFUNC( FIELD_VOID, "Launch", InputLaunch),
 
 	// Function Pointers
 	DEFINE_FUNCTION( FlareTouch ),
@@ -77,47 +50,11 @@ IMPLEMENT_SERVERCLASS_ST( CFlare, DT_Flare )
 	SendPropFloat( SENDINFO( m_flScale ), 0, SPROP_NOSCALE ),
 	SendPropInt( SENDINFO( m_bLight ), 1, SPROP_UNSIGNED ),
 	SendPropInt( SENDINFO( m_bSmoke ), 1, SPROP_UNSIGNED ),
-	SendPropInt( SENDINFO( m_bPropFlare ), 1, SPROP_UNSIGNED ),
 END_SEND_TABLE()
-
-CFlare *CFlare::activeFlares = NULL;
-
-CFlare *CFlare::GetActiveFlares( void )
-{
-	return CFlare::activeFlares;
-}
 
 Class_T CFlare::Classify( void )
 {
 	return CLASS_FLARE; 
-}
-
-CBaseEntity *CreateFlare( Vector vOrigin, QAngle Angles, CBaseEntity *pOwner, float flDuration )
-{
-	CFlare *pFlare = CFlare::Create( vOrigin, Angles, pOwner, flDuration );
-
-	if ( pFlare )
-	{
-		pFlare->m_bPropFlare = true;
-	}
-
-	return pFlare;
-}
-
-void KillFlare( CBaseEntity *pOwnerEntity, CBaseEntity *pEntity, float flKillTime )
-{
-	CFlare *pFlare = dynamic_cast< CFlare *>( pEntity );
-
-	if ( pFlare )
-	{
-		float flDieTime = (pFlare->m_flTimeBurnOut - gpGlobals->curtime) - flKillTime;
-
-		if ( flDieTime > 1.0f )
-		{
-			pFlare->Die( flDieTime );
-			pOwnerEntity->SetNextThink( gpGlobals->curtime + flDieTime + 3.0f );
-		}
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -133,17 +70,6 @@ CFlare::CFlare( void )
 	m_flNextDamage	= gpGlobals->curtime;
 	m_lifeState		= LIFE_ALIVE;
 	m_iHealth		= 100;
-	m_bPropFlare	= false;
-	m_bInActiveList	= false;
-	m_pNextFlare	= NULL;
-}
-
-CFlare::~CFlare()
-{
-	CSoundEnvelopeController::GetController().SoundDestroy( m_pBurnSound );
-	m_pBurnSound = NULL;
-
-	RemoveFromActiveFlares();
 }
 
 //-----------------------------------------------------------------------------
@@ -178,6 +104,16 @@ int CFlare::Restore( IRestore &restore )
 		m_bSmoke = false;
 	}
 
+	CPASAttenuationFilter filter( this );
+	m_pBurnSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), CHAN_WEAPON, "weapons/flaregun/burn.wav", 2.0f );
+
+	if ( ( m_flTimeBurnOut != -1.0f ) && ( m_flTimeBurnOut > gpGlobals->curtime ) )
+	{
+		CSoundEnvelopeController::GetController().Play( m_pBurnSound, 0.0f, 60 );
+		CSoundEnvelopeController::GetController().SoundChangeVolume( m_pBurnSound, 0.8f, 2.0f );
+		CSoundEnvelopeController::GetController().SoundChangePitch( m_pBurnSound, 100, 2.0f );
+	}
+
 	return result;
 }
 
@@ -197,10 +133,10 @@ void CFlare::Spawn( void )
 
 	SetMoveType( MOVETYPE_NONE );
 	SetFriction( 0.6f );
-	SetGravity( UTIL_ScaleForGravity( 400 ) );
+	SetGravity(0.5f);
 	m_flTimeBurnOut = gpGlobals->curtime + 30;
 
-	AddEffects( EF_NOSHADOW|EF_NORECEIVESHADOW );
+	AddEffects(EF_NOSHADOW|EF_NORECEIVESHADOW);
 
 	if ( m_spawnflags & SF_FLARE_NO_DLIGHT )
 	{
@@ -248,7 +184,7 @@ void CFlare::StartBurnSound( void )
 	{
 		CPASAttenuationFilter filter( this );
 		m_pBurnSound = CSoundEnvelopeController::GetController().SoundCreate( 
-			filter, entindex(), CHAN_WEAPON, "Weapon_FlareGun.Burn", 3.0f );
+			filter, entindex(), CHAN_WEAPON, "weapons/flaregun/burn.wav", 3.0f );
 	}
 }
 
@@ -299,6 +235,17 @@ CFlare *CFlare::Create( Vector vecOrigin, QAngle vecAngles, CBaseEntity *pOwner,
 unsigned int CFlare::PhysicsSolidMaskForEntity( void ) const
 {
 	return MASK_NPCSOLID;
+
+/*
+	if ( GetFlags() & FL_NPC )
+	{
+	}
+	else if ( IsPlayer() )
+	{
+		return MASK_PLAYERSOLID;
+	}
+	return MASK_OPAQUE;
+*/
 }
 
 //-----------------------------------------------------------------------------
@@ -307,11 +254,6 @@ unsigned int CFlare::PhysicsSolidMaskForEntity( void ) const
 void CFlare::FlareThink( void )
 {
 	float	deltaTime = ( m_flTimeBurnOut - gpGlobals->curtime );
-
-	if ( !m_bInActiveList && ( ( deltaTime > FLARE_BLIND_TIME ) || ( m_flTimeBurnOut == -1.0f ) ) )
-	{
-		AddToActiveFlares();
-	}
 
 	if ( m_flTimeBurnOut != -1.0f )
 	{
@@ -323,15 +265,11 @@ void CFlare::FlareThink( void )
 			CSoundEnvelopeController::GetController().SoundFadeOut( m_pBurnSound, deltaTime );
 		}
 
-		// if flare is no longer bright, remove it from active flare list
-		if ( m_bInActiveList && ( deltaTime <= FLARE_BLIND_TIME ) )
-		{
-			RemoveFromActiveFlares();
-		}
-
 		//Burned out
 		if ( m_flTimeBurnOut < gpGlobals->curtime )
 		{
+			CSoundEnvelopeController::GetController().SoundDestroy( m_pBurnSound );
+			m_pBurnSound = NULL;
 			UTIL_Remove( this );
 			return;
 		}
@@ -405,12 +343,15 @@ void CFlare::FlareTouch( CBaseEntity *pOther )
 		m_flNextDamage = gpGlobals->curtime + 1.0f;
 		*/
 
-		CBaseAnimating *pAnim;
-
-		pAnim = dynamic_cast<CBaseAnimating*>(pOther);
-		if( pAnim )
+		CBaseCombatCharacter *pBCC;
+		pBCC = pOther->MyCombatCharacterPointer();
+		
+		if( pBCC )
 		{
-			pAnim->Ignite( 30.0f );
+			if( !pBCC->IsOnFire() )
+			{
+				pOther->MyCombatCharacterPointer()->Ignite( 100.0f );
+			}
 		}
 
 		Vector vecNewVelocity = GetAbsVelocity();
@@ -434,7 +375,7 @@ void CFlare::FlareTouch( CBaseEntity *pOther )
 		//Only do this on the first bounce
 		if ( m_nBounces == 0 )
 		{
-			const surfacedata_t *pdata = physprops->GetSurfaceData( tr.surface.surfaceProps );	
+			surfacedata_t *pdata = physprops->GetSurfaceData( tr.surface.surfaceProps );	
 
 			if ( pdata != NULL )
 			{
@@ -486,7 +427,7 @@ void CFlare::FlareTouch( CBaseEntity *pOther )
 
 		// Change our flight characteristics
 		SetMoveType( MOVETYPE_FLYGRAVITY, MOVECOLLIDE_FLY_BOUNCE );
-		SetGravity( UTIL_ScaleForGravity( 640 ) );
+		SetGravity(0.8f);
 		
 		m_nBounces++;
 
@@ -525,14 +466,7 @@ void CFlare::Start( float lifeTime )
 		CSoundEnvelopeController::GetController().SoundChangePitch( m_pBurnSound, 100, 2.0f );
 	}
 
-	if ( lifeTime > 0 )
-	{
-		m_flTimeBurnOut = gpGlobals->curtime + lifeTime;
-	}
-	else
-	{
-		m_flTimeBurnOut = -1.0f;
-	}
+	m_flTimeBurnOut = gpGlobals->curtime + lifeTime;
 
 	RemoveEffects( EF_NODRAW );
 
@@ -557,19 +491,12 @@ void CFlare::Die( float fadeTime )
 void CFlare::Launch( const Vector &direction, float speed )
 {
 	// Make sure we're visible
-	if ( m_spawnflags & SF_FLARE_INFINITE )
-	{
-		Start( -1 );
-	}
-	else
-	{
-		Start( 8.0f );
-	}
+	Start( 8.0f );
 
 	SetMoveType( MOVETYPE_FLYGRAVITY, MOVECOLLIDE_FLY_BOUNCE );
 
 	// Punch our velocity towards our facing
-	SetAbsVelocity( direction * speed );
+	SetAbsVelocity( direction * FLARE_LAUNCH_SPEED );
 
 	SetGravity( 1.0f );
 }
@@ -601,63 +528,8 @@ void CFlare::InputLaunch( inputdata_t &inputdata )
 	Vector	direction;
 	AngleVectors( GetAbsAngles(), &direction );
 
-	float	speed = inputdata.value.Float();
-
-	if ( speed == 0 )
-	{
-		speed = FLARE_LAUNCH_SPEED;
-	}
-
-	Launch( direction, speed );
+	Launch( direction, FLARE_LAUNCH_SPEED );
 }
-
-//-----------------------------------------------------------------------------
-// Purpose: Removes flare from active flare list
-//-----------------------------------------------------------------------------
-void CFlare::RemoveFromActiveFlares( void )
-{
-	CFlare *pFlare;
-	CFlare *pPrevFlare;
-
-	if ( !m_bInActiveList )
-		return;
-
-	pPrevFlare = NULL;
-	for( pFlare = CFlare::activeFlares; pFlare != NULL; pFlare = pFlare->m_pNextFlare )
-	{
-		if ( pFlare == this )
-		{
-			if ( pPrevFlare )
-			{
-				pPrevFlare->m_pNextFlare = m_pNextFlare;
-			}
-			else
-			{
-				activeFlares = m_pNextFlare;
-			}
-			break;
-		}
-		pPrevFlare = pFlare;
-	}
-
-	m_pNextFlare = NULL;
-	m_bInActiveList = false;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Adds flare to active flare list
-//-----------------------------------------------------------------------------
-void CFlare::AddToActiveFlares( void )
-{
-	if ( !m_bInActiveList )
-	{
-		m_pNextFlare = CFlare::activeFlares;
-		CFlare::activeFlares = this;
-		m_bInActiveList = true;
-	}
-}
-
-#if 0
 
 IMPLEMENT_SERVERCLASS_ST(CFlaregun, DT_Flaregun)
 END_SEND_TABLE()
@@ -671,10 +543,6 @@ PRECACHE_WEAPON_REGISTER( weapon_flaregun );
 void CFlaregun::Precache( void )
 {
 	BaseClass::Precache();
-
-	PrecacheScriptSound( "Flare.Touch" );
-
-	PrecacheScriptSound( "Weapon_FlareGun.Burn" );
 
 	UTIL_PrecacheOther( "env_flare" );
 }
@@ -752,4 +620,18 @@ void CFlaregun::SecondaryAttack( void )
 	WeaponSound( SINGLE );
 }
 
-#endif
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CFlaregun::Reload( void )
+{
+	bool fRet;
+
+	fRet = BaseClass::Reload();
+	if ( fRet )
+	{
+		WeaponSound( RELOAD );
+	}
+
+	return fRet;
+}

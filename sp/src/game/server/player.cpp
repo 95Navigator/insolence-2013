@@ -106,11 +106,16 @@ static ConVar physicsshadowupdate_render( "physicsshadowupdate_render", "0" );
 bool IsInCommentaryMode( void );
 bool IsListeningToCommentary( void );
 
-#if !defined( CSTRIKE_DLL )
-ConVar cl_sidespeed( "cl_sidespeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
-ConVar cl_upspeed( "cl_upspeed", "320", FCVAR_REPLICATED | FCVAR_CHEAT );
-ConVar cl_forwardspeed( "cl_forwardspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
-ConVar cl_backspeed( "cl_backspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+#if !defined( CSTRIKE_DLL ) && !defined ( INSOLENCE )
+	ConVar cl_sidespeed( "cl_sidespeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+	ConVar cl_upspeed( "cl_upspeed", "320", FCVAR_REPLICATED | FCVAR_CHEAT );
+	ConVar cl_forwardspeed( "cl_forwardspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+	ConVar cl_backspeed( "cl_backspeed", "450", FCVAR_REPLICATED | FCVAR_CHEAT );
+#else
+	ConVar cl_sidespeed("cl_sidespeed", "400", FCVAR_REPLICATED | FCVAR_CHEAT);
+	ConVar cl_upspeed("cl_upspeed", "320", FCVAR_REPLICATED | FCVAR_CHEAT);
+	ConVar cl_forwardspeed("cl_forwardspeed", "400", FCVAR_REPLICATED | FCVAR_CHEAT);
+	ConVar cl_backspeed("cl_backspeed", "400", FCVAR_REPLICATED | FCVAR_CHEAT);
 #endif // CSTRIKE_DLL
 
 // This is declared in the engine, too
@@ -1279,8 +1284,8 @@ int CBasePlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		{
 			if (m_lastDamageAmount > 5)
 				SetSuitUpdate("!HEV_DMG6", false, SUIT_NEXT_IN_30SEC);	// blood loss detected
-			//else
-			//	SetSuitUpdate("!HEV_DMG0", false, SUIT_NEXT_IN_30SEC);	// minor laceration
+			else
+				SetSuitUpdate("!HEV_DMG0", false, SUIT_NEXT_IN_30SEC);	// minor laceration
 			
 			bitsDamage &= ~DMG_BULLET;
 			ffound = true;
@@ -1907,7 +1912,7 @@ void CBasePlayer::SetAnimation( PLAYER_ANIM playerAnim )
 WaterMove
 ============
 */
-#ifdef HL2_DLL
+#if defined( HL2_DLL ) && !defined ( INSOLENCE )
 
 // test for HL2 drowning damage increase (aux power used instead)
 #define AIRTIME						7		// lung full of air lasts this many seconds
@@ -6138,36 +6143,52 @@ void CBasePlayer::CheatImpulseCommands( int iImpulse )
 		EquipSuit();
 
 		// Give the player everything!
-		GiveAmmo( 255,	"Pistol");
-		GiveAmmo( 255,	"AR2");
-		GiveAmmo( 5,	"AR2AltFire");
-		GiveAmmo( 255,	"SMG1");
+		GiveAmmo( 255,	"SmallRound");
+		GiveAmmo( 255,	"MediumRound");
+		GiveAmmo( 255,	"LargeRound");
 		GiveAmmo( 255,	"Buckshot");
-		GiveAmmo( 3,	"smg1_grenade");
-		GiveAmmo( 3,	"rpg_round");
+		GiveAmmo( 3,	"ar2_grenade");
+		GiveAmmo( 3,	"ml_grenade");
 		GiveAmmo( 5,	"grenade");
-		GiveAmmo( 32,	"357" );
-		GiveAmmo( 16,	"XBowBolt" );
+		GiveAmmo( 150,	"GaussEnergy");
+
+		GiveAmmo( 20,	"FlareRound");
+		GiveAmmo( 30,	"SniperRound");
+		GiveAmmo( 5,	"Molotov");
+		GiveAmmo( 20,	"Slam");
 #ifdef HL2_EPISODIC
 		GiveAmmo( 5,	"Hopwire" );
 #endif		
-		GiveNamedItem( "weapon_smg1" );
+
 		GiveNamedItem( "weapon_frag" );
 		GiveNamedItem( "weapon_crowbar" );
 		GiveNamedItem( "weapon_pistol" );
 		GiveNamedItem( "weapon_ar2" );
 		GiveNamedItem( "weapon_shotgun" );
-		GiveNamedItem( "weapon_physcannon" );
-		GiveNamedItem( "weapon_bugbait" );
+		GiveNamedItem( "weapon_smg1" );
+		GiveNamedItem( "weapon_gauss" );
+
 		GiveNamedItem( "weapon_rpg" );
-		GiveNamedItem( "weapon_357" );
-		GiveNamedItem( "weapon_crossbow" );
+
+		GiveNamedItem( "weapon_sniperrifle" );
+		GiveNamedItem( "weapon_hmg1" );
+		GiveNamedItem( "weapon_flaregun" );
+		GiveNamedItem( "weapon_binoculars" );
+		GiveNamedItem( "weapon_bugbait" );
+		GiveNamedItem( "weapon_molotov" );
+		GiveNamedItem( "weapon_slam" );
 #ifdef HL2_EPISODIC
 		// GiveNamedItem( "weapon_magnade" );
 #endif
 		if ( GetHealth() < 100 )
 		{
 			TakeHealth( 25, DMG_GENERIC );
+		}
+
+		if ( ArmorValue() < 100 )
+		{
+			GiveNamedItem( "item_battery" );
+			GiveNamedItem( "item_battery" );
 		}
 		
 		gEvilImpulse101		= false;

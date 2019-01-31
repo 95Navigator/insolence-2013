@@ -33,6 +33,12 @@ extern ConVar in_forceuser;
 #define VIEWMODEL_ANIMATION_PARITY_BITS 3
 #define SCREEN_OVERLAY_MATERIAL "vgui/screens/vgui_overlay"
 
+#if defined( CLIENT_DLL )
+	ConVar viewmodel_offset_x( "viewmodel_offset_x", "-2.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in X
+	ConVar viewmodel_offset_y( "viewmodel_offset_y", "-10.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in Y
+	ConVar viewmodel_offset_z( "viewmodel_offset_z", "-1.0", FCVAR_ARCHIVE );	 // the viewmodel offset from default in Z
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -389,6 +395,13 @@ void CBaseViewModel::CalcViewModelView( CBasePlayer *owner, const Vector& eyePos
 	QAngle vmangoriginal = eyeAngles;
 	QAngle vmangles = eyeAngles;
 	Vector vmorigin = eyePosition;
+
+	Vector vecRight;
+	Vector vecUp;
+	Vector vecForward;
+	AngleVectors( vmangoriginal, &vecForward, &vecRight, &vecUp );
+	//Vector vecOffset = Vector( viewmodel_offset_x.GetFloat(), viewmodel_offset_y.GetFloat(), viewmodel_offset_z.GetFloat() ); 
+	vmorigin += (vecForward * viewmodel_offset_y.GetFloat()) + (vecUp * viewmodel_offset_z.GetFloat()) + (vecRight * viewmodel_offset_x.GetFloat());
 
 	CBaseCombatWeapon *pWeapon = m_hWeapon.Get();
 	//Allow weapon lagging

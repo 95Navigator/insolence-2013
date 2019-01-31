@@ -164,7 +164,7 @@ void CHud::DrawProgressBar( int x, int y, int width, int height, float percentag
 //			clr - 
 //			type - 
 //-----------------------------------------------------------------------------
-void CHud::DrawIconProgressBar( int x, int y, CHudTexture *icon, CHudTexture *icon2, float percentage, Color& clr, int type )
+void CHud::DrawIconProgressBar( int x, int y, CHudTexture *icon, float percentage, Color& clr, int type )
 {
 	if ( icon == NULL )
 		return;
@@ -176,15 +176,20 @@ void CHud::DrawIconProgressBar( int x, int y, CHudTexture *icon, CHudTexture *ic
 	int	height = icon->Height();
 	int	width  = icon->Width();
 
+	Color darkClr = clr;
+	darkClr[0] /= 4;
+	darkClr[1] /= 4;
+	darkClr[2] /= 4;
+
 	//Draw a vertical progress bar
 	if ( type == HUDPB_VERTICAL )
 	{
 		int	barOfs = height * percentage;
 
-		icon2->DrawSelfCropped( 
+		icon->DrawSelfCropped( 
 			x, y,  // Pos
 			0, 0, width, barOfs, // Cropped subrect
-			clr );
+			darkClr );
 
 		icon->DrawSelfCropped( 
 			x, y + barOfs, 
@@ -195,10 +200,10 @@ void CHud::DrawIconProgressBar( int x, int y, CHudTexture *icon, CHudTexture *ic
 	{
 		int	barOfs = width * percentage;
 
-		icon2->DrawSelfCropped( 
+		icon->DrawSelfCropped( 
 			x, y,  // Pos
 			0, 0, barOfs, height, // Cropped subrect
-			clr );
+			darkClr );
 
 		icon->DrawSelfCropped( 
 			x + barOfs, y, 

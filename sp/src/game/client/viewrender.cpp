@@ -806,6 +806,8 @@ CLIENTEFFECT_REGISTER_BEGIN( PrecachePostProcessingEffects )
 	CLIENTEFFECT_MATERIAL( "dev/pyro_post" )
 #endif
 
+	CLIENTEFFECT_MATERIAL( "effects/shaders/bokeh" )
+
 CLIENTEFFECT_REGISTER_END_CONDITIONAL( engine->GetDXSupportLevel() >= 90 )
 
 //-----------------------------------------------------------------------------
@@ -2046,6 +2048,14 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 			}
 		}
 
+		if ( !building_cubemaps.GetBool() )
+		{
+			if ( view.m_bDoBloomAndToneMapping )
+			{
+				PerformPreViewmodelPostProcessEffects( view.x, view.y, view.width, view.height );
+			}
+		}
+
 		GetClientModeNormal()->DoPostScreenSpaceEffects( &view );
 
 		// Now actually draw the viewmodel
@@ -2369,7 +2379,28 @@ void CViewRender::Render2DEffectsPostHUD( const CViewSetup &view )
 {
 }
 
+ConVar r_post_bokeh( "r_post_bokeh", "1", FCVAR_ARCHIVE );
+ConVar r_post_bokeh_blur_amount( "r_post_bokeh_blur_amount", "5.0", FCVAR_CHEAT );
 
+void CViewRender::PerformBokeh( int x, int y, int width, int height )
+{
+	if ( !r_post_bokeh.GetBool() )
+		return;
+
+	IMaterialVar *var;
+
+	IMaterial *pBokeh = materials->FindMaterial( "effects/shaders/bokeh", TEXTURE_GROUP_PIXEL_SHADERS, true );
+
+	var = pBokeh->FindVar( "$MUTABLE_01", NULL );
+	var->SetFloatValue( r_post_bokeh_blur_amount.GetFloat() );
+
+	DrawScreenEffectMaterial( pBokeh, x, y, width, height );
+}
+
+void CViewRender::PerformPreViewmodelPostProcessEffects( int x, int y, int width, int height )
+{
+	PerformBokeh( x, y, width, height );
+}
 
 //-----------------------------------------------------------------------------
 //
@@ -4996,6 +5027,10 @@ void CShadowDepthView::Draw()
 		render->Push3DView( (*this), VIEW_CLEAR_DEPTH, m_pRenderTarget, GetFrustum() );
 	}
 
+	pRenderContext.GetFrom(materials);
+	pRenderContext->PushRenderTargetAndViewport(m_pRenderTarget, m_pDepthTexture, 0, 0, m_pDepthTexture->GetMappingWidth(), m_pDepthTexture->GetMappingWidth());
+	pRenderContext.SafeRelease();
+
 	SetupCurrentView( origin, angles, VIEW_SHADOW_DEPTH_TEXTURE );
 
 	MDLCACHE_CRITICAL_SECTION();
@@ -5039,6 +5074,8 @@ void CShadowDepthView::Draw()
 		//Resolve() the depth texture here. Before the pop so the copy will recognize that the resolutions are the same
 		pRenderContext->CopyRenderTargetToTextureEx( m_pDepthTexture, -1, NULL, NULL );
 	}
+
+	pRenderContext->PopRenderTargetAndViewport();
 
 	render->PopView( GetFrustum() );
 

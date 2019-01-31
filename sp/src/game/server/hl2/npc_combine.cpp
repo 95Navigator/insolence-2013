@@ -285,6 +285,12 @@ void CNPC_Combine::Precache()
 	PrecacheScriptSound( "NPC_Combine.WeaponBash" );
 	PrecacheScriptSound( "Weapon_CombineGuard.Special1" );
 
+	// get voice pitch
+	if (random->RandomInt(0,1))
+		m_Sentences.SetVoicePitch( 109 + random->RandomInt(0,7) );
+	else
+		m_Sentences.SetVoicePitch( 100 );
+
 	BaseClass::Precache();
 }
 

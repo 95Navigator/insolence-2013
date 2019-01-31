@@ -22,9 +22,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-extern ConVar sk_auto_reload_time;
-extern ConVar sk_plr_num_shotgun_pellets;
-
 class CWeaponShotgun : public CBaseHLCombatWeapon
 {
 	DECLARE_DATADESC();
@@ -470,7 +467,7 @@ void CWeaponShotgun::PrimaryAttack( void )
 	pPlayer->SetMuzzleFlashTime( gpGlobals->curtime + 1.0 );
 	
 	// Fire the bullets, and force the first shot to be perfectly accuracy
-	pPlayer->FireBullets( sk_plr_num_shotgun_pellets.GetInt(), vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, true, true );
+	pPlayer->FireBullets( 7, vecSrc, vecAiming, GetBulletSpread(), MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 0, -1, -1, 0, NULL, true, true );
 	
 	pPlayer->ViewPunch( QAngle( random->RandomFloat( -2, -1 ), random->RandomFloat( -2, 2 ), 0 ) );
 
@@ -751,25 +748,6 @@ void CWeaponShotgun::ItemHolsterFrame( void )
 	// We can't be active
 	if ( GetOwner()->GetActiveWeapon() == this )
 		return;
-
-	// If it's been longer than three seconds, reload
-	if ( ( gpGlobals->curtime - m_flHolsterTime ) > sk_auto_reload_time.GetFloat() )
-	{
-		// Reset the timer
-		m_flHolsterTime = gpGlobals->curtime;
-	
-		if ( GetOwner() == NULL )
-			return;
-
-		if ( m_iClip1 == GetMaxClip1() )
-			return;
-
-		// Just load the clip with no animations
-		int ammoFill = MIN( (GetMaxClip1() - m_iClip1), GetOwner()->GetAmmoCount( GetPrimaryAmmoType() ) );
-		
-		GetOwner()->RemoveAmmo( ammoFill, GetPrimaryAmmoType() );
-		m_iClip1 += ammoFill;
-	}
 }
 
 //==================================================

@@ -390,7 +390,7 @@ bool CNPC_CombineS::IsHeavyDamage( const CTakeDamageInfo &info )
 	// Shotgun blasts where at least half the pellets hit me are heavy damage
 	if ( info.GetDamageType() & DMG_BUCKSHOT )
 	{
-		int iHalfMax = sk_plr_dmg_buckshot.GetFloat() * sk_plr_num_shotgun_pellets.GetInt() * 0.5;
+		int iHalfMax = sk_plr_dmg_buckshot.GetFloat() * 7 * 0.5;
 		if ( info.GetDamage() >= iHalfMax )
 			return true;
 	}

@@ -7,42 +7,32 @@
 
 #include "cbase.h"
 #include "basecombatweapon.h"
-#include "npcevent.h"
+#include "NPCevent.h"
 #include "basecombatcharacter.h"
-#include "ai_basenpc.h"
+#include "AI_BaseNPC.h"
 #include "player.h"
 #include "weapon_ar2.h"
 #include "grenade_ar2.h"
 #include "gamerules.h"
 #include "game.h"
 #include "in_buttons.h"
-#include "ai_memory.h"
-#include "soundent.h"
-#include "hl2_player.h"
-#include "EntityFlame.h"
-#include "weapon_flaregun.h"
-#include "te_effect_dispatch.h"
-#include "prop_combine_ball.h"
-#include "beam_shared.h"
-#include "npc_combine.h"
-#include "rumble_shared.h"
-#include "gamestats.h"
+#include "AI_Memory.h"
+#include "shake.h"
 
-// memdbgon must be the last include file in a .cpp file!!!
-#include "tier0/memdbgon.h"
+extern ConVar    sk_plr_dmg_ar2_grenade;	
+extern ConVar    sk_npc_dmg_ar2_grenade;
+extern ConVar    sk_max_ar2_grenade;
+extern ConVar	 sk_ar2_grenade_radius;
 
-ConVar sk_weapon_ar2_alt_fire_radius( "sk_weapon_ar2_alt_fire_radius", "10" );
-ConVar sk_weapon_ar2_alt_fire_duration( "sk_weapon_ar2_alt_fire_duration", "2" );
-ConVar sk_weapon_ar2_alt_fire_mass( "sk_weapon_ar2_alt_fire_mass", "150" );
+#define AR2_ZOOM_RATE	0.5f	// Interval between zoom levels in seconds.
 
 //=========================================================
 //=========================================================
 
 BEGIN_DATADESC( CWeaponAR2 )
 
-	DEFINE_FIELD( m_flDelayedFire,	FIELD_TIME ),
-	DEFINE_FIELD( m_bShotDelayed,	FIELD_BOOLEAN ),
-	//DEFINE_FIELD( m_nVentPose, FIELD_INTEGER ),
+	DEFINE_FIELD( m_nShotsFired,	FIELD_INTEGER ),
+	DEFINE_FIELD( m_bZoomed,		FIELD_BOOLEAN ),
 
 END_DATADESC()
 
@@ -115,17 +105,22 @@ CWeaponAR2::CWeaponAR2( )
 	m_fMaxRange2	= 1024;
 
 	m_nShotsFired	= 0;
-	m_nVentPose		= -1;
-
-	m_bAltFiresUnderwater = false;
 }
 
 void CWeaponAR2::Precache( void )
 {
+	UTIL_PrecacheOther("grenade_ar2");
 	BaseClass::Precache();
+}
 
-	UTIL_PrecacheOther( "prop_combine_ball" );
-	UTIL_PrecacheOther( "env_entity_dissolver" );
+//-----------------------------------------------------------------------------
+// Purpose: Offset the autoreload
+//-----------------------------------------------------------------------------
+bool CWeaponAR2::Deploy( void )
+{
+	m_nShotsFired = 0;
+
+	return BaseClass::Deploy();
 }
 
 //-----------------------------------------------------------------------------
@@ -133,29 +128,25 @@ void CWeaponAR2::Precache( void )
 //-----------------------------------------------------------------------------
 void CWeaponAR2::ItemPostFrame( void )
 {
-	// See if we need to fire off our secondary round
-	if ( m_bShotDelayed && gpGlobals->curtime > m_flDelayedFire )
+	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
+	if (!pOwner)
+		return;
+
+	if ( ( pOwner->m_nButtons & IN_ATTACK ) == false )
 	{
-		DelayedAttack();
+		m_nShotsFired = 0;
 	}
 
-	// Update our pose parameter for the vents
-	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
-
-	if ( pOwner )
+	//Zoom in
+	if ( pOwner->m_afButtonPressed & IN_ATTACK2 )
 	{
-		CBaseViewModel *pVM = pOwner->GetViewModel();
+		Zoom();
+	}
 
-		if ( pVM )
-		{
-			if ( m_nVentPose == -1 )
-			{
-				m_nVentPose = pVM->LookupPoseParameter( "VentPoses" );
-			}
-			
-			float flVentPose = RemapValClamped( m_nShotsFired, 0, 5, 0.0f, 1.0f );
-			pVM->SetPoseParameter( m_nVentPose, flVentPose );
-		}
+	//Don't kick the same when we're zoomed in
+	if ( m_bZoomed )
+	{
+		m_fFireDuration = 0.05f;
 	}
 
 	BaseClass::ItemPostFrame();
@@ -171,308 +162,58 @@ Activity CWeaponAR2::GetPrimaryAttackActivity( void )
 		return ACT_VM_PRIMARYATTACK;
 
 	if ( m_nShotsFired < 3 )
-		return ACT_VM_RECOIL1;
+		return ACT_VM_HITLEFT;
 	
 	if ( m_nShotsFired < 4 )
-		return ACT_VM_RECOIL2;
+		return ACT_VM_HITLEFT2;
 
-	return ACT_VM_RECOIL3;
+	return ACT_VM_HITRIGHT;
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : &tr - 
-//			nDamageType - 
-//-----------------------------------------------------------------------------
-void CWeaponAR2::DoImpactEffect( trace_t &tr, int nDamageType )
+//---------------------------------------------------------
+//---------------------------------------------------------
+void CWeaponAR2::PrimaryAttack( void )
 {
-	CEffectData data;
+	m_nShotsFired++;
 
-	data.m_vOrigin = tr.endpos + ( tr.plane.normal * 1.0f );
-	data.m_vNormal = tr.plane.normal;
-
-	DispatchEffect( "AR2Impact", data );
-
-	BaseClass::DoImpactEffect( tr, nDamageType );
+	BaseClass::PrimaryAttack();
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponAR2::DelayedAttack( void )
-{
-	m_bShotDelayed = false;
-	
-	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
-	
-	if ( pOwner == NULL )
-		return;
-
-	// Deplete the clip completely
-	SendWeaponAnim( ACT_VM_SECONDARYATTACK );
-	m_flNextSecondaryAttack = pOwner->m_flNextAttack = gpGlobals->curtime + SequenceDuration();
-
-	// Register a muzzleflash for the AI
-	pOwner->DoMuzzleFlash();
-	pOwner->SetMuzzleFlashTime( gpGlobals->curtime + 0.5 );
-	
-	WeaponSound( WPN_DOUBLE );
-
-	pOwner->RumbleEffect(RUMBLE_SHOTGUN_DOUBLE, 0, RUMBLE_FLAG_RESTART );
-
-	// Fire the bullets
-	Vector vecSrc	 = pOwner->Weapon_ShootPosition( );
-	Vector vecAiming = pOwner->GetAutoaimVector( AUTOAIM_SCALE_DEFAULT );
-	Vector impactPoint = vecSrc + ( vecAiming * MAX_TRACE_LENGTH );
-
-	// Fire the bullets
-	Vector vecVelocity = vecAiming * 1000.0f;
-
-	// Fire the combine ball
-	CreateCombineBall(	vecSrc, 
-						vecVelocity, 
-						sk_weapon_ar2_alt_fire_radius.GetFloat(), 
-						sk_weapon_ar2_alt_fire_mass.GetFloat(),
-						sk_weapon_ar2_alt_fire_duration.GetFloat(),
-						pOwner );
-
-	// View effects
-	color32 white = {255, 255, 255, 64};
-	UTIL_ScreenFade( pOwner, white, 0.1, 0, FFADE_IN  );
-	
-	//Disorient the player
-	QAngle angles = pOwner->GetLocalAngles();
-
-	angles.x += random->RandomInt( -4, 4 );
-	angles.y += random->RandomInt( -4, 4 );
-	angles.z = 0;
-
-	pOwner->SnapEyeAngles( angles );
-	
-	pOwner->ViewPunch( QAngle( random->RandomInt( -8, -12 ), random->RandomInt( 1, 2 ), 0 ) );
-
-	// Decrease ammo
-	pOwner->RemoveAmmo( 1, m_iSecondaryAmmoType );
-
-	// Can shoot again immediately
-	m_flNextPrimaryAttack = gpGlobals->curtime + 0.5f;
-
-	// Can blow up after a short delay (so have time to release mouse button)
-	m_flNextSecondaryAttack = gpGlobals->curtime + 1.0f;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponAR2::SecondaryAttack( void )
-{
-	if ( m_bShotDelayed )
-		return;
-
-	// Cannot fire underwater
-	if ( GetOwner() && GetOwner()->GetWaterLevel() == 3 )
-	{
-		SendWeaponAnim( ACT_VM_DRYFIRE );
-		BaseClass::WeaponSound( EMPTY );
-		m_flNextSecondaryAttack = gpGlobals->curtime + 0.5f;
-		return;
-	}
-
-	m_bShotDelayed = true;
-	m_flNextPrimaryAttack = m_flNextSecondaryAttack = m_flDelayedFire = gpGlobals->curtime + 0.5f;
-
-	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
-	if( pPlayer )
-	{
-		pPlayer->RumbleEffect(RUMBLE_AR2_ALT_FIRE, 0, RUMBLE_FLAG_RESTART );
-	}
-
-	SendWeaponAnim( ACT_VM_FIDGET );
-	WeaponSound( SPECIAL1 );
-
-	m_iSecondaryAttacks++;
-	gamestats->Event_WeaponFired( pPlayer, false, GetClassname() );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Override if we're waiting to release a shot
-// Output : Returns true on success, false on failure.
-//-----------------------------------------------------------------------------
-bool CWeaponAR2::CanHolster( void )
-{
-	if ( m_bShotDelayed )
-		return false;
-
-	return BaseClass::CanHolster();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Override if we're waiting to release a shot
-//-----------------------------------------------------------------------------
-bool CWeaponAR2::Reload( void )
-{
-	if ( m_bShotDelayed )
-		return false;
-
-	return BaseClass::Reload();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : *pOperator - 
-//-----------------------------------------------------------------------------
-void CWeaponAR2::FireNPCPrimaryAttack( CBaseCombatCharacter *pOperator, bool bUseWeaponAngles )
-{
-	Vector vecShootOrigin, vecShootDir;
-
-	CAI_BaseNPC *npc = pOperator->MyNPCPointer();
-	ASSERT( npc != NULL );
-
-	if ( bUseWeaponAngles )
-	{
-		QAngle	angShootDir;
-		GetAttachment( LookupAttachment( "muzzle" ), vecShootOrigin, angShootDir );
-		AngleVectors( angShootDir, &vecShootDir );
-	}
-	else 
-	{
-		vecShootOrigin = pOperator->Weapon_ShootPosition();
-		vecShootDir = npc->GetActualShootTrajectory( vecShootOrigin );
-	}
-
-	WeaponSoundRealtime( SINGLE_NPC );
-
-	CSoundEnt::InsertSound( SOUND_COMBAT|SOUND_CONTEXT_GUNFIRE, pOperator->GetAbsOrigin(), SOUNDENT_VOLUME_MACHINEGUN, 0.2, pOperator, SOUNDENT_CHANNEL_WEAPON, pOperator->GetEnemy() );
-
-	pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2 );
-
-	// NOTENOTE: This is overriden on the client-side
-	// pOperator->DoMuzzleFlash();
-
-	m_iClip1 = m_iClip1 - 1;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponAR2::FireNPCSecondaryAttack( CBaseCombatCharacter *pOperator, bool bUseWeaponAngles )
-{
-	WeaponSound( WPN_DOUBLE );
-
-	if ( !GetOwner() )
-		return;
-		
-	CAI_BaseNPC *pNPC = GetOwner()->MyNPCPointer();
-	if ( !pNPC )
-		return;
-	
-	// Fire!
-	Vector vecSrc;
-	Vector vecAiming;
-
-	if ( bUseWeaponAngles )
-	{
-		QAngle	angShootDir;
-		GetAttachment( LookupAttachment( "muzzle" ), vecSrc, angShootDir );
-		AngleVectors( angShootDir, &vecAiming );
-	}
-	else 
-	{
-		vecSrc = pNPC->Weapon_ShootPosition( );
-		
-		Vector vecTarget;
-
-		CNPC_Combine *pSoldier = dynamic_cast<CNPC_Combine *>( pNPC );
-		if ( pSoldier )
-		{
-			// In the distant misty past, elite soldiers tried to use bank shots.
-			// Therefore, we must ask them specifically what direction they are shooting.
-			vecTarget = pSoldier->GetAltFireTarget();
-		}
-		else
-		{
-			// All other users of the AR2 alt-fire shoot directly at their enemy.
-			if ( !pNPC->GetEnemy() )
-				return;
-				
-			vecTarget = pNPC->GetEnemy()->BodyTarget( vecSrc );
-		}
-
-		vecAiming = vecTarget - vecSrc;
-		VectorNormalize( vecAiming );
-	}
-
-	Vector impactPoint = vecSrc + ( vecAiming * MAX_TRACE_LENGTH );
-
-	float flAmmoRatio = 1.0f;
-	float flDuration = RemapValClamped( flAmmoRatio, 0.0f, 1.0f, 0.5f, sk_weapon_ar2_alt_fire_duration.GetFloat() );
-	float flRadius = RemapValClamped( flAmmoRatio, 0.0f, 1.0f, 4.0f, sk_weapon_ar2_alt_fire_radius.GetFloat() );
-
-	// Fire the bullets
-	Vector vecVelocity = vecAiming * 1000.0f;
-
-	// Fire the combine ball
-	CreateCombineBall(	vecSrc, 
-		vecVelocity, 
-		flRadius, 
-		sk_weapon_ar2_alt_fire_mass.GetFloat(),
-		flDuration,
-		pNPC );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponAR2::Operator_ForceNPCFire( CBaseCombatCharacter *pOperator, bool bSecondary )
-{
-	if ( bSecondary )
-	{
-		FireNPCSecondaryAttack( pOperator, true );
-	}
-	else
-	{
-		// Ensure we have enough rounds in the clip
-		m_iClip1++;
-
-		FireNPCPrimaryAttack( pOperator, true );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : *pEvent - 
-//			*pOperator - 
-//-----------------------------------------------------------------------------
 void CWeaponAR2::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator )
 {
 	switch( pEvent->event )
 	{ 
 		case EVENT_WEAPON_AR2:
-			{
-				FireNPCPrimaryAttack( pOperator, false );
-			}
-			break;
+		{
+			Vector vecShootOrigin, vecShootDir;
+			vecShootOrigin = pOperator->Weapon_ShootPosition();
 
-		case EVENT_WEAPON_AR2_ALTFIRE:
-			{
-				FireNPCSecondaryAttack( pOperator, false );
-			}
-			break;
-
+			CAI_BaseNPC *npc = pOperator->MyNPCPointer();
+			ASSERT( npc != NULL );
+			vecShootDir = npc->GetActualShootTrajectory( vecShootOrigin );
+			WeaponSound(SINGLE_NPC);
+			pOperator->FireBullets( 1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, MAX_TRACE_LENGTH, m_iPrimaryAmmoType, 2 );
+			pOperator->DoMuzzleFlash();
+			m_iClip1 = m_iClip1 - 1;
+		}
+		break;
 		default:
 			CBaseCombatWeapon::Operator_HandleAnimEvent( pEvent, pOperator );
 			break;
 	}
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
+/*
+==================================================
+AddViewKick
+==================================================
+*/
+
 void CWeaponAR2::AddViewKick( void )
 {
 	#define	EASY_DAMPEN			0.5f
-	#define	MAX_VERTICAL_KICK	8.0f	//Degrees
-	#define	SLIDE_LIMIT			5.0f	//Seconds
+	#define	MAX_VERTICAL_KICK	24.0f	//Degrees
+	#define	SLIDE_LIMIT			3.0f	//Seconds
 	
 	//Get the view kick
 	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
@@ -480,18 +221,103 @@ void CWeaponAR2::AddViewKick( void )
 	if (!pPlayer)
 		return;
 
-	float flDuration = m_fFireDuration;
+	DoMachineGunKick( pPlayer, EASY_DAMPEN, MAX_VERTICAL_KICK, m_fFireDuration, SLIDE_LIMIT );
+}
 
-	if( g_pGameRules->GetAutoAimMode() == AUTOAIM_ON_CONSOLE )
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CWeaponAR2::Zoom( void )
+{
+	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
+	
+	if ( pPlayer == NULL )
+		return;
+
+	color32 lightGreen = { 50, 255, 170, 32 };
+
+	if ( m_bZoomed )
 	{
-		// On the 360 (or in any configuration using the 360 aiming scheme), don't let the
-		// AR2 progressive into the late, highly inaccurate stages of its kick. Just
-		// spoof the time to make it look (to the kicking code) like we haven't been
-		// firing for very long.
-		flDuration = MIN( flDuration, 0.75f );
+		pPlayer->ShowViewModel( true );
+
+		// Zoom out to the default zoom level
+		WeaponSound(SPECIAL2);
+		pPlayer->SetFOV( this, 0, 0.1f );
+		m_bZoomed = false;
+
+		UTIL_ScreenFade( pPlayer, lightGreen, 0.2f, 0, (FFADE_IN|FFADE_PURGE) );
+	}
+	else
+	{
+		pPlayer->ShowViewModel( false );
+
+		WeaponSound(SPECIAL1);
+		pPlayer->SetFOV( this, 35, 0.1f );
+		m_bZoomed = true;
+
+		UTIL_ScreenFade( pPlayer, lightGreen, 0.2f, 0, (FFADE_OUT|FFADE_PURGE|FFADE_STAYOUT) );	
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Output : float
+//-----------------------------------------------------------------------------
+float CWeaponAR2::GetFireRate( void )
+{ 
+	if ( m_bZoomed )
+		return 0.3f;
+
+	return 0.1f;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : NULL - 
+//-----------------------------------------------------------------------------
+bool CWeaponAR2::Holster( CBaseCombatWeapon *pSwitchingTo )
+{
+	if ( m_bZoomed )
+	{
+		Zoom();
 	}
 
-	DoMachineGunKick( pPlayer, EASY_DAMPEN, MAX_VERTICAL_KICK, flDuration, SLIDE_LIMIT );
+	return BaseClass::Holster( pSwitchingTo );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Output : Returns true on success, false on failure.
+//-----------------------------------------------------------------------------
+bool CWeaponAR2::Reload( void )
+{
+	if ( m_bZoomed )
+	{
+		Zoom();
+	}
+
+	bool fRet;
+	
+	fRet = BaseClass::Reload();
+	if ( fRet )
+	{
+		WeaponSound( RELOAD );
+	}
+
+	return fRet;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CWeaponAR2::Drop( const Vector &velocity )
+{
+	if ( m_bZoomed )
+	{
+		Zoom();
+	}
+
+	BaseClass::Drop( velocity );
 }
 
 //-----------------------------------------------------------------------------

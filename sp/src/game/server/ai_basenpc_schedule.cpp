@@ -3142,6 +3142,12 @@ void CAI_BaseNPC::RunDieTask()
 		}
 		else // !!!HACKHACK - put NPC in a thin, wide bounding box until we fix the solid type/bounding volume problem
 			UTIL_SetSize ( this, WorldAlignMins(), Vector ( WorldAlignMaxs().x, WorldAlignMaxs().y, WorldAlignMins().z + 1 ) );
+
+		if ( !ShouldFadeOnDeath() )
+		{
+			// body is gonna be around for a while, so have it stink for a bit.
+			CSoundEnt::InsertSound ( SOUND_CARCASS, GetLocalOrigin(), 384, 30 );
+		}
 	}
 }
 

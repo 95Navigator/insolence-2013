@@ -68,7 +68,7 @@ extern ConVar autoaim_max_dist;
 // preventing headshots and other such things. Also, game difficulty will
 // not change if the model changes. This is the value by which to scale
 // the X/Y of the player's hull to get the volume to trace bullets against.
-#define PLAYER_HULL_REDUCTION	0.70
+#define PLAYER_HULL_REDUCTION	1.00
 
 // This switches between the single primary weapon, and multiple weapons with buckets approach (jdw)
 #define	HL2_SINGLE_PRIMARY_WEAPON_MODE	0
@@ -79,9 +79,15 @@ extern int gEvilImpulse101;
 
 ConVar sv_autojump( "sv_autojump", "0" );
 
-ConVar hl2_walkspeed( "hl2_walkspeed", "150" );
-ConVar hl2_normspeed( "hl2_normspeed", "190" );
-ConVar hl2_sprintspeed( "hl2_sprintspeed", "320" );
+#if defined ( INSOLENCE )
+	ConVar hl2_walkspeed( "hl2_walkspeed", "140", FCVAR_DEVELOPMENTONLY );
+	ConVar hl2_normspeed( "hl2_normspeed", "200", FCVAR_DEVELOPMENTONLY );
+	ConVar hl2_sprintspeed( "hl2_sprintspeed", "320", FCVAR_DEVELOPMENTONLY );
+#else
+	ConVar hl2_walkspeed( "hl2_walkspeed", "150" );
+	ConVar hl2_normspeed( "hl2_normspeed", "190" );
+	ConVar hl2_sprintspeed( "hl2_sprintspeed", "320" );
+#endif
 
 ConVar hl2_darkness_flashlight_factor ( "hl2_darkness_flashlight_factor", "1" );
 
@@ -90,8 +96,13 @@ ConVar hl2_darkness_flashlight_factor ( "hl2_darkness_flashlight_factor", "1" );
 	#define	HL2_NORM_SPEED 190
 	#define	HL2_SPRINT_SPEED 320
 #else
+	// INSOLENCE: Walking player speed used through the whole game (with or without the HEV suit equipped)
 	#define	HL2_WALK_SPEED hl2_walkspeed.GetFloat()
+
+	// INSOLENCE: Normal player speed used through C17 (without the HEV suit equipped)
 	#define	HL2_NORM_SPEED hl2_normspeed.GetFloat()
+
+	// INSOLENCE: Normal player speed used through the rest of the game (with the HEV suit equipped)
 	#define	HL2_SPRINT_SPEED hl2_sprintspeed.GetFloat()
 #endif
 
@@ -462,6 +473,8 @@ void CHL2_Player::EquipSuit( bool bPlayEffects )
 {
 	MDLCACHE_CRITICAL_SECTION();
 	BaseClass::EquipSuit();
+
+	InitSprinting();
 	
 	m_HL2Local.m_bDisplayReticle = true;
 
@@ -475,11 +488,14 @@ void CHL2_Player::RemoveSuit( void )
 {
 	BaseClass::RemoveSuit();
 
+	InitSprinting();
+
 	m_HL2Local.m_bDisplayReticle = false;
 }
 
 void CHL2_Player::HandleSpeedChanges( void )
 {
+#if !defined ( INSOLENCE )
 	int buttonsChanged = m_afButtonPressed | m_afButtonReleased;
 
 	bool bCanSprint = CanSprint();
@@ -511,11 +527,15 @@ void CHL2_Player::HandleSpeedChanges( void )
 			m_nButtons &= ~IN_SPEED;
 		}
 	}
+#endif
 
 	bool bIsWalking = IsWalking();
-	// have suit, pressing button, not sprinting or ducking
+	// pressing button
 	bool bWantWalking;
-	
+
+#if defined ( INSOLENCE )
+	bWantWalking = (m_nButtons & IN_WALK) && !IsSprinting();
+#else
 	if( IsSuitEquipped() )
 	{
 		bWantWalking = (m_nButtons & IN_WALK) && !IsSprinting() && !(m_nButtons & IN_DUCK);
@@ -524,6 +544,7 @@ void CHL2_Player::HandleSpeedChanges( void )
 	{
 		bWantWalking = true;
 	}
+#endif
 	
 	if( bIsWalking != bWantWalking )
 	{
@@ -649,6 +670,7 @@ void CHL2_Player::PreThink(void)
 	HandleArmorReduction();
 #endif
 
+#if !defined ( INSOLENCE )
 	if( sv_stickysprint.GetBool() && m_bIsAutoSprinting )
 	{
 		// If we're ducked and not in the air
@@ -678,6 +700,7 @@ void CHL2_Player::PreThink(void)
 			StopSprinting();
 		}
 	}
+#endif
 
 	VPROF_SCOPE_END();
 
@@ -953,6 +976,7 @@ void CHL2_Player::HandleAdmireGlovesAnimation( void )
 void CHL2_Player::Activate( void )
 {
 	BaseClass::Activate();
+
 	InitSprinting();
 
 #ifdef HL2_EPISODIC
@@ -1123,8 +1147,10 @@ void CHL2_Player::Spawn(void)
 	//
 	//m_flMaxspeed = 320;
 
+#if !defined ( INSOLENCE )
 	if ( !IsSuitEquipped() )
 		 StartWalking();
+#endif
 
 	SuitPower_SetCharge( 100 );
 
@@ -1157,7 +1183,11 @@ void CHL2_Player::UpdateLocatorPosition( const Vector &vecPosition )
 //-----------------------------------------------------------------------------
 void CHL2_Player::InitSprinting( void )
 {
+#if defined ( INSOLENCE )
+	StopWalking();
+#else
 	StopSprinting();
+#endif
 }
 
 
@@ -1275,7 +1305,19 @@ void CHL2_Player::StartWalking( void )
 //-----------------------------------------------------------------------------
 void CHL2_Player::StopWalking( void )
 {
+#if defined ( INSOLENCE )
+	if( IsSuitEquipped() )
+	{
+		SetMaxSpeed( HL2_SPRINT_SPEED );
+	}
+	else
+	{
+		SetMaxSpeed( HL2_NORM_SPEED );
+	}
+#else
 	SetMaxSpeed( HL2_NORM_SPEED );
+#endif
+
 	m_fIsWalking = false;
 }
 
@@ -2007,7 +2049,7 @@ bool CHL2_Player::ApplyBattery( float powerMultiplier )
 		Q_snprintf( szcharge,sizeof(szcharge),"!HEV_%1dP", pct );
 		
 		//UTIL_EmitSoundSuit(edict(), szcharge);
-		//SetSuitUpdate(szcharge, FALSE, SUIT_NEXT_IN_30SEC);
+		SetSuitUpdate(szcharge, FALSE, SUIT_NEXT_IN_30SEC);
 		return true;		
 	}
 	return false;
@@ -2821,11 +2863,13 @@ void CHL2_Player::PlayerUse ( void )
 			}
 		}
 
+#if !defined( INSOLENCE )
 		// Tracker 3926:  We can't +USE something if we're climbing a ladder
 		if ( GetMoveType() == MOVETYPE_LADDER )
 		{
 			return;
 		}
+#endif
 	}
 
 	if( m_flTimeUseSuspended > gpGlobals->curtime )

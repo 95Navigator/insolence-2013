@@ -16,8 +16,6 @@
 
 #include "basegrenade_shared.h"
 
-class CParticleSystem;
-
 enum SpitSize_e
 {
 	SPIT_SMALL,
@@ -25,34 +23,27 @@ enum SpitSize_e
 	SPIT_LARGE,
 };
 
-#define SPIT_GRAVITY 600
+#define SPIT_GRAVITY 0.5
 
 class CGrenadeSpit : public CBaseGrenade
 {
+public:
 	DECLARE_CLASS( CGrenadeSpit, CBaseGrenade );
 
-public:
-						CGrenadeSpit( void );
+	void		Spawn( void );
+	void		Precache( void );
+	void		SpitThink( void );
+	void 		GrenadeSpitTouch( CBaseEntity *pOther );
+	void		Event_Killed( const CTakeDamageInfo &info );
+	void		SetSpitSize(int nSize);
 
-	virtual void		Spawn( void );
-	virtual void		Precache( void );
-	virtual void		Event_Killed( const CTakeDamageInfo &info );
+	int			m_nSquidSpitSprite;
+	float		m_fSpitDeathTime;		// If non-zero won't detonate
 
-	virtual	unsigned int	PhysicsSolidMaskForEntity( void ) const { return ( BaseClass::PhysicsSolidMaskForEntity() | CONTENTS_WATER ); }
+	void EXPORT				Detonate(void);
+	CGrenadeSpit(void);
 
-	void 				GrenadeSpitTouch( CBaseEntity *pOther );
-	void				SetSpitSize( int nSize );
-	void				Detonate( void );
-	void				Think( void );
-
-private:
 	DECLARE_DATADESC();
-	
-	void	InitHissSound( void );
-	
-	CHandle< CParticleSystem >	m_hSpitEffect;
-	CSoundPatch		*m_pHissSound;
-	bool			m_bPlaySound;
 };
 
 #endif	//GRENADESPIT_H

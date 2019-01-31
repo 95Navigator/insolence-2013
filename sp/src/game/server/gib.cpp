@@ -382,7 +382,7 @@ void CGib::WaitTillLand ( void )
 		{
 			// ok, start stinkin!
 			// FIXME: It's too easy to fill up the sound queue with all these meat sounds
-			// CSoundEnt::InsertSound ( SOUND_MEAT, GetAbsOrigin(), 384, 25 );
+			CSoundEnt::InsertSound ( SOUND_MEAT, GetAbsOrigin(), 384, 25 );
 		}
 	}
 	else

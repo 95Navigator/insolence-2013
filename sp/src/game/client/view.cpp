@@ -112,7 +112,7 @@ static ConVar v_centerspeed( "v_centerspeed","500" );
 // and motions look the most natural.
 ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_ARCHIVE );
 #else
-ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_CHEAT );
+ConVar v_viewmodel_fov( "viewmodel_fov", "90", FCVAR_ARCHIVE );
 #endif
 ConVar mat_viewportscale( "mat_viewportscale", "1.0", FCVAR_ARCHIVE, "Scale down the main viewport (to reduce GPU impact on CPU profiling)", true, (1.0f / 640.0f), true, 1.0f );
 ConVar mat_viewportupscale( "mat_viewportupscale", "1", FCVAR_ARCHIVE, "Scale the viewport back up" );
@@ -344,6 +344,11 @@ void CViewRender::LevelInit( void )
 
 	// Init all IScreenSpaceEffects
 	g_pScreenSpaceEffects->InitScreenSpaceEffects( );
+
+	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_healthfx" );
+	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_vignetting" );
+	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_unsharp" );
+	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_waterfx" );
 }
 
 //-----------------------------------------------------------------------------
@@ -351,6 +356,11 @@ void CViewRender::LevelInit( void )
 //-----------------------------------------------------------------------------
 void CViewRender::LevelShutdown( void )
 {
+	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_waterfx" );
+	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_unsharp" );
+	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_vignetting" );
+	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_healthfx" );
+
 	g_pScreenSpaceEffects->ShutdownScreenSpaceEffects( );
 }
 
@@ -736,7 +746,7 @@ void CViewRender::SetUpViews()
 	float flFOVOffset = fDefaultFov - view.fov;
 
 	//Adjust the viewmodel's FOV to move with any FOV offsets on the viewer's end
-	view.fovViewmodel = g_pClientMode->GetViewModelFOV() - flFOVOffset;
+	view.fovViewmodel = abs(g_pClientMode->GetViewModelFOV() - flFOVOffset);
 
 	if ( UseVR() )
 	{

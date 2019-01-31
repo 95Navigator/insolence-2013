@@ -365,6 +365,8 @@ public:
 	virtual void	Render2DEffectsPreHUD( const CViewSetup &view );
 	virtual void	Render2DEffectsPostHUD( const CViewSetup &view );
 
+	void			PerformBokeh( int x, int y, int width, int height );
+	void			PerformPreViewmodelPostProcessEffects( int x, int y, int width, int height );
 
 	void			DisableFog( void );
 

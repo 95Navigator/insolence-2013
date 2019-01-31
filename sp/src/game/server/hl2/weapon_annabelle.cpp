@@ -18,8 +18,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-extern ConVar sk_auto_reload_time;
-
 class CWeaponAnnabelle : public CBaseHLCombatWeapon
 {
 	DECLARE_DATADESC();
@@ -311,25 +309,6 @@ void CWeaponAnnabelle::ItemHolsterFrame( void )
 	// We can't be active
 	if ( GetOwner()->GetActiveWeapon() == this )
 		return;
-
-	// If it's been longer than three seconds, reload
-	if ( ( gpGlobals->curtime - m_flHolsterTime ) > sk_auto_reload_time.GetFloat() )
-	{
-		// Reset the timer
-		m_flHolsterTime = gpGlobals->curtime;
-	
-		if ( GetOwner() == NULL )
-			return;
-
-		if ( m_iClip1 == GetMaxClip1() )
-			return;
-
-		// Just load the clip with no animations
-		int ammoFill = MIN( (GetMaxClip1() - m_iClip1), GetOwner()->GetAmmoCount( GetPrimaryAmmoType() ) );
-		
-		GetOwner()->RemoveAmmo( ammoFill, GetPrimaryAmmoType() );
-		m_iClip1 += ammoFill;
-	}
 }
 
 //-----------------------------------------------------------------------------

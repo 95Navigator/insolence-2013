@@ -80,13 +80,8 @@ private:
 
 	CHudTexture	*m_icon_c;
 
-	CHudTexture	*m_icon_rbn;	// right bracket
-	CHudTexture	*m_icon_lbn;	// left bracket
-
-	CHudTexture	*m_icon_rb;		// right bracket, full
-	CHudTexture	*m_icon_lb;		// left bracket, full
-	CHudTexture	*m_icon_rbe;	// right bracket, empty
-	CHudTexture	*m_icon_lbe;	// left bracket, empty
+	CHudTexture	*m_icon_rb;	// right bracket
+	CHudTexture	*m_icon_lb;	// left bracket
 };
 
 DECLARE_HUDELEMENT( CHUDQuickInfo );
@@ -131,12 +126,8 @@ void CHUDQuickInfo::VidInit( void )
 	Init();
 
 	m_icon_c = gHUD.GetIcon( "crosshair" );
-	m_icon_rb = gHUD.GetIcon( "crosshair_right_full" );
-	m_icon_lb = gHUD.GetIcon( "crosshair_left_full" );
-	m_icon_rbe = gHUD.GetIcon( "crosshair_right_empty" );
-	m_icon_lbe = gHUD.GetIcon( "crosshair_left_empty" );
-	m_icon_rbn = gHUD.GetIcon( "crosshair_right" );
-	m_icon_lbn = gHUD.GetIcon( "crosshair_left" );
+	m_icon_rb = gHUD.GetIcon( "crosshair_right" );
+	m_icon_lb = gHUD.GetIcon( "crosshair_left" );
 }
 
 
@@ -174,7 +165,7 @@ void CHUDQuickInfo::DrawWarning( int x, int y, CHudTexture *icon, float &time )
 //-----------------------------------------------------------------------------
 bool CHUDQuickInfo::ShouldDraw( void )
 {
-	if ( !m_icon_c || !m_icon_rb || !m_icon_rbe || !m_icon_lb || !m_icon_lbe )
+	if ( !m_icon_c || !m_icon_rb || !m_icon_lb )
 		return false;
 
 	C_BasePlayer *player = C_BasePlayer::GetLocalPlayer();
@@ -247,16 +238,14 @@ void CHUDQuickInfo::Paint()
 	if ( pWeapon == NULL )
 		return;
 
-	float fX, fY;
 	bool bBehindCamera = false;
-	CHudCrosshair::GetDrawPosition( &fX, &fY, &bBehindCamera );
 
 	// if the crosshair is behind the camera, don't draw it
 	if( bBehindCamera )
 		return;
 
-	int		xCenter	= (int)fX;
-	int		yCenter = (int)fY - m_icon_lb->Height() / 2;
+	int		xCenter	= ( ScreenWidth() / 2 ) - m_icon_c->Width() / 2;
+	int		yCenter = ( ScreenHeight() / 2 ) - m_icon_c->Height() / 2;
 
 	float	scalar  = 138.0f/255.0f;
 	
@@ -331,7 +320,7 @@ void CHUDQuickInfo::Paint()
 	// Update our health
 	if ( m_healthFade > 0.0f )
 	{
-		DrawWarning( xCenter - (m_icon_lb->Width() * 2), yCenter, m_icon_lb, m_healthFade );
+		DrawWarning( xCenter - 10, yCenter - 5, m_icon_lb, m_healthFade );
 	}
 	else
 	{
@@ -349,13 +338,13 @@ void CHUDQuickInfo::Paint()
 			healthColor[3] = 255 * scalar;
 		}
 		
-		gHUD.DrawIconProgressBar( xCenter - (m_icon_lb->Width() * 2), yCenter, m_icon_lb, m_icon_lbe, ( 1.0f - healthPerc ), healthColor, CHud::HUDPB_VERTICAL );
+		gHUD.DrawIconProgressBar( xCenter - 10, yCenter - 5, m_icon_lb, ( 1.0f - healthPerc ), healthColor, CHud::HUDPB_VERTICAL );
 	}
 
 	// Update our ammo
 	if ( m_ammoFade > 0.0f )
 	{
-		DrawWarning( xCenter + m_icon_rb->Width(), yCenter, m_icon_rb, m_ammoFade );
+		DrawWarning( xCenter + m_icon_rb->Width() - 6, yCenter - 5, m_icon_rb, m_ammoFade );
 	}
 	else
 	{
@@ -382,7 +371,7 @@ void CHUDQuickInfo::Paint()
 			ammoColor[3] = 255 * scalar;
 		}
 		
-		gHUD.DrawIconProgressBar( xCenter + m_icon_rb->Width(), yCenter, m_icon_rb, m_icon_rbe, ammoPerc, ammoColor, CHud::HUDPB_VERTICAL );
+		gHUD.DrawIconProgressBar( xCenter + m_icon_rb->Width() - 6, yCenter - 5, m_icon_rb, ammoPerc, ammoColor, CHud::HUDPB_VERTICAL );
 	}
 }
 

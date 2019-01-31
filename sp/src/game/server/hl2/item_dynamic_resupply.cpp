@@ -46,16 +46,15 @@ static DynamicResupplyItems_t g_DynamicResupplyHealthItems[] =
 // Ammo types
 static DynamicResupplyItems_t g_DynamicResupplyAmmoItems[] =
 {
-	{ "item_ammo_pistol",			"Pistol",		SIZE_AMMO_PISTOL,		0.5f },
-	{ "item_ammo_smg1",				"SMG1",			SIZE_AMMO_SMG1,			0.4f },
-	{ "item_ammo_smg1_grenade",		"SMG1_Grenade", SIZE_AMMO_SMG1_GRENADE, 0.0f },
-	{ "item_ammo_ar2",				"AR2",			SIZE_AMMO_AR2,			0.0f },
-	{ "item_box_buckshot",			"Buckshot",		SIZE_AMMO_BUCKSHOT,		0.0f },
-	{ "item_rpg_round",				"RPG_Round",	SIZE_AMMO_RPG_ROUND,	0.0f },
+	{ "item_box_srounds",			"SmallRound",	SIZE_BOX_SROUNDS,		0.5f },
+	{ "item_box_mrounds",			"MediumRound",	SIZE_BOX_MROUNDS,		0.4f },
+	{ "item_ar2_grenade",			"AR2_Grenade",	1,						0.0f },
+	{ "item_box_lrounds",			"LargeRound",	SIZE_BOX_LROUNDS,		0.0f },
+	{ "item_box_buckshot",			"Buckshot",		SIZE_BOX_BUCKSHOT,		0.0f },
+	{ "item_ml_grenade",			"ML_Grenade",	1,						0.0f },
 	{ "weapon_frag",				"Grenade",		1,						0.1f },
-	{ "item_ammo_357",				"357",			SIZE_AMMO_357,			0.0f },
-	{ "item_ammo_crossbow",			"XBowBolt",		SIZE_AMMO_CROSSBOW,		0.0f },
-	{ "item_ammo_ar2_altfire",		"AR2AltFire",	SIZE_AMMO_AR2_ALTFIRE,	0.0f },
+	{ "item_box_flare_rounds",		"FlareRound",	SIZE_BOX_FLARE_ROUNDS,	0.0f },
+	{ "item_box_sniper_rounds",		"SniperRound",	SIZE_BOX_SNIPER_ROUNDS,	0.0f },
 };
 
 #define DS_HEALTH_INDEX		0
@@ -139,16 +138,15 @@ BEGIN_DATADESC( CItem_DynamicResupply )
 
 	DEFINE_KEYFIELD( m_flDesiredHealth[0], FIELD_FLOAT, "DesiredHealth" ),
 	DEFINE_KEYFIELD( m_flDesiredHealth[1], FIELD_FLOAT, "DesiredArmor" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[0], FIELD_FLOAT, "DesiredAmmoPistol" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[1], FIELD_FLOAT, "DesiredAmmoSMG1" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[2], FIELD_FLOAT, "DesiredAmmoSMG1_Grenade" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[3], FIELD_FLOAT, "DesiredAmmoAR2" ),
+	DEFINE_KEYFIELD( m_flDesiredAmmo[0], FIELD_FLOAT, "DesiredAmmoSmallRound" ),
+	DEFINE_KEYFIELD( m_flDesiredAmmo[1], FIELD_FLOAT, "DesiredAmmoMediumRound" ),
+	DEFINE_KEYFIELD( m_flDesiredAmmo[2], FIELD_FLOAT, "DesiredAmmoAR2_Grenade" ),
+	DEFINE_KEYFIELD( m_flDesiredAmmo[3], FIELD_FLOAT, "DesiredAmmoLargeRound" ),
 	DEFINE_KEYFIELD( m_flDesiredAmmo[4], FIELD_FLOAT, "DesiredAmmoBuckshot" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[5], FIELD_FLOAT, "DesiredAmmoRPG_Round" ),
+	DEFINE_KEYFIELD( m_flDesiredAmmo[5], FIELD_FLOAT, "DesiredAmmoML_Grenade" ),
 	DEFINE_KEYFIELD( m_flDesiredAmmo[6], FIELD_FLOAT, "DesiredAmmoGrenade" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[7], FIELD_FLOAT, "DesiredAmmo357" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[8], FIELD_FLOAT, "DesiredAmmoCrossbow" ),
-	DEFINE_KEYFIELD( m_flDesiredAmmo[9], FIELD_FLOAT, "DesiredAmmoAR2_AltFire" ),
+	DEFINE_KEYFIELD( m_flDesiredAmmo[7], FIELD_FLOAT, "DesiredAmmoFlareRound" ),
+	DEFINE_KEYFIELD( m_flDesiredAmmo[8], FIELD_FLOAT, "DesiredAmmoSniperRound" ),
 
 	DEFINE_FIELD( m_version, FIELD_INTEGER ),
 	DEFINE_FIELD( m_bIsMaster, FIELD_BOOLEAN ),
@@ -171,16 +169,15 @@ CItem_DynamicResupply::CItem_DynamicResupply( void )
 	// Setup default values
 	m_flDesiredHealth[0] = 1.0;	// Health
 	m_flDesiredHealth[1] = 0.3;	// Armor
-	m_flDesiredAmmo[0] = 0.5;	// Pistol
-	m_flDesiredAmmo[1] = 0.5;	// SMG1
-	m_flDesiredAmmo[2] = 0.1;	// SMG1 Grenade
-	m_flDesiredAmmo[3] = 0.4;	// AR2
+	m_flDesiredAmmo[0] = 0.5;	// Small Round
+	m_flDesiredAmmo[1] = 0.5;	// Medium Round
+	m_flDesiredAmmo[2] = 0.1;	// AR2 Grenade
+	m_flDesiredAmmo[3] = 0.4;	// Large Round
 	m_flDesiredAmmo[4] = 0.5;	// Shotgun
-	m_flDesiredAmmo[5] = 0.0;	// RPG Round
+	m_flDesiredAmmo[5] = 0.0;	// ML Grenade
 	m_flDesiredAmmo[6] = 0.1;	// Grenade
-	m_flDesiredAmmo[7] = 0;		// 357
-	m_flDesiredAmmo[8] = 0;		// Crossbow
-	m_flDesiredAmmo[9] = 0;		// AR2 alt-fire
+	m_flDesiredAmmo[7] = 0.0;	// Flare Round
+	m_flDesiredAmmo[8] = 0.0;	// Sniper Round
 }
 
 

@@ -26,10 +26,8 @@ class CGrenadeAR2 : public CBaseGrenade
 public:
 	DECLARE_CLASS( CGrenadeAR2, CBaseGrenade );
 
-	CHandle< SmokeTrail > m_hSmokeTrail;
+	SmokeTrail			*m_pSmokeTrail;
 	float				 m_fSpawnTime;
-	float				m_fDangerRadius;
-
 
 	void		Spawn( void );
 	void		Precache( void );
