@@ -253,7 +253,6 @@ public:
 #ifdef CLIENT_DLL
 	virtual void			CreateMove( float flInputSampleTime, CUserCmd *pCmd, const QAngle &vecOldViewAngles ) {}
 	virtual int				CalcOverrideModelIndex() OVERRIDE;
-	bool					GetBlurState( void ) { return m_bReloadBlur; }
 #endif
 
 	virtual bool			IsWeaponZoomed() { return false; }		// Is this weapon in its 'zoomed in' mode?
@@ -546,7 +545,6 @@ public:
 	// Weapon firing
 	CNetworkVar( float, m_flNextPrimaryAttack );						// soonest time ItemPostFrame will call PrimaryAttack
 	CNetworkVar( float, m_flNextSecondaryAttack );					// soonest time ItemPostFrame will call SecondaryAttack
-	CNetworkVar( bool,	m_bReloadBlur );
 	CNetworkVar( float, m_flTimeWeaponIdle );							// soonest time ItemPostFrame will call WeaponIdle
 	// Weapon state
 	bool					m_bInReload;			// Are we in the middle of a reload;
@@ -601,10 +599,6 @@ public:
 	EHANDLE					m_hLocker;				// Who locked this weapon.
 
 	CNetworkVar( bool, m_bFlipViewModel );
-
-#ifndef CLIENT_DLL
-	float					m_flReloadTime;
-#endif
 
 	IPhysicsConstraint		*GetConstraint() { return m_pConstraint; }
 

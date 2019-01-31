@@ -28,3 +28,7 @@ unsharp_ps2x.fxc
 //unsharp_blur
 unsharp_blur_vs20.fxc
 unsharp_blur_ps2x.fxc
+
+//screenwater
+screenwater_vs20.fxc
+screenwater_ps2x.fxc

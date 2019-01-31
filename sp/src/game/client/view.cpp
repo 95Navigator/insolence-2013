@@ -348,6 +348,7 @@ void CViewRender::LevelInit( void )
 	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_healthfx" );
 	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_vignetting" );
 	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_unsharp" );
+	g_pScreenSpaceEffects->EnableScreenSpaceEffect( "c17_waterfx" );
 }
 
 //-----------------------------------------------------------------------------
@@ -355,6 +356,7 @@ void CViewRender::LevelInit( void )
 //-----------------------------------------------------------------------------
 void CViewRender::LevelShutdown( void )
 {
+	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_waterfx" );
 	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_unsharp" );
 	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_vignetting" );
 	g_pScreenSpaceEffects->DisableScreenSpaceEffect( "c17_healthfx" );

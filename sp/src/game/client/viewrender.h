@@ -366,7 +366,6 @@ public:
 	virtual void	Render2DEffectsPostHUD( const CViewSetup &view );
 
 	void			PerformBokeh( int x, int y, int width, int height );
-	void			PerformReloadBlur( int x, int y, int width, int height );
 	void			PerformPreViewmodelPostProcessEffects( int x, int y, int width, int height );
 
 	void			DisableFog( void );
@@ -494,7 +493,6 @@ private:
 	Vector			m_vecLastFacing;
 	float			m_flCheapWaterStartDistance;
 	float			m_flCheapWaterEndDistance;
-	float			m_flViewModelBlurAmount;
 
 	CViewSetup			m_OverlayViewSetup;
 	int					m_OverlayClearFlags;
