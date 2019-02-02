@@ -9,6 +9,8 @@
 #include "BaseVSShader.h"
 #include "convar.h"
 #include "lightmappedgeneric_dx9_helper.h"
+#include "SDK_lightmappedgeneric_ps20b.inc"
+#include "SDK_lightmappedgeneric_vs20.inc"
 
 static LightmappedGeneric_DX9_Vars_t s_info;
 
@@ -73,6 +75,11 @@ BEGIN_VS_SHADER( SDK_LightmappedGeneric,
 		SHADER_PARAM( OUTLINESTART1, SHADER_PARAM_TYPE_FLOAT, "0.0", "inner start value for outline")
 		SHADER_PARAM( OUTLINEEND0, SHADER_PARAM_TYPE_FLOAT, "0.0", "inner end value for outline")
 		SHADER_PARAM( OUTLINEEND1, SHADER_PARAM_TYPE_FLOAT, "0.0", "outer end value for outline")
+
+		SHADER_PARAM( PHONG, SHADER_PARAM_TYPE_BOOL, "0", "enables phong lighting" )
+		SHADER_PARAM( PHONGBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Phong overbrightening factor (specular mask channel should be authored to account for this)" )
+		SHADER_PARAM( PHONGFRESNELRANGES, SHADER_PARAM_TYPE_VEC3, "[0  0.5  1]", "Parameters for remapping fresnel output" )
+		SHADER_PARAM( PHONGEXPONENT, SHADER_PARAM_TYPE_FLOAT, "5.0", "Phong exponent for local specular lights" )
 END_SHADER_PARAMS
 
 	void SetupVars( LightmappedGeneric_DX9_Vars_t& info )
@@ -134,6 +141,11 @@ END_SHADER_PARAMS
 		info.m_nOutlineStart1 = OUTLINESTART1;
 		info.m_nOutlineEnd0 = OUTLINEEND0;
 		info.m_nOutlineEnd1 = OUTLINEEND1;
+
+		info.m_nPhong = PHONG;
+		info.m_nPhongBoost = PHONGBOOST;
+		info.m_nPhongFresnelRanges = PHONGFRESNELRANGES;
+		info.m_nPhongExponent = PHONGEXPONENT;
 	}
 
 	SHADER_FALLBACK

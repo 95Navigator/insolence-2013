@@ -12,17 +12,17 @@
 // STATIC: "SEAMLESS"               	"0..1"
 // STATIC: "DETAILTEXTURE"             	"0..1"
 // STATIC: "DETAIL_BLEND_MODE"			"0..1"
-// STATIC: "FLASHLIGHTDEPTHFILTERMODE"	"0..2"	[ps20b] [PC]
-// STATIC: "FLASHLIGHTDEPTHFILTERMODE"	"0..2"	[ps30]
-// STATIC: "FLASHLIGHTDEPTHFILTERMODE"	"0..0"	[ps20b] [XBOX]
+// STATIC: "FLASHLIGHTDEPTHFILTERMODE"	"0..2"	[ps20b] [ps30] [PC]
+// STATIC: "PHONG"						"0..1"	[ps20b] [ps30]
+// STATIC: "PHONGMASK"					"0..3"	[ps20b] [ps30]
 
 // DYNAMIC: "PIXELFOGTYPE"				"0..1"
-// DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"	[ps20b]
-// DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"	[ps30]
+// DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"	[ps20b] [ps30]
 
 // SKIP: !$WORLDVERTEXTRANSITION && $NORMALMAP2
 // SKIP: !$NORMALMAP && $NORMALMAP2
 // SKIP: !$DETAILTEXTURE && ( $DETAIL_BLEND_MODE != 0 )
+// SKIP: !$PHONG && $PHONGMASK
 
 #include "shader_constant_register_map.h"
 #include "common_flashlight_fxc.h"
@@ -33,7 +33,17 @@ const float4 g_FogParams					: register( PSREG_FOG_PARAMS );
 const float4 g_EyePos						: register( PSREG_EYEPOS_SPEC_EXPONENT );
 const float4 g_FlashlightAttenuation		: register( PSREG_FLASHLIGHT_ATTENUATION );
 const float4 g_DetailConstants				: register( c0 );
+const float4 g_FlashlightPos				: register( c1 );
+const float4 g_FresnelSpecParams			: register( PSREG_FRESNEL_SPEC_PARAMS );
 
+#define g_SpecularExponent	g_EyePos.w
+#define g_FresnelRanges		g_FresnelSpecParams.xyz
+#define g_SpecularBoost		g_FresnelSpecParams.w
+
+#define PHONGMASK_BASEALPHA		1
+#define PHONGMASK_NORMALALPHA	2
+#define PHONGMASK_STANDALONE	3
+ 
 sampler SpotSampler							: register( s0 );
 sampler BaseTextureSampler					: register( s1 );
 sampler NormalizingCubemapSampler			: register( s2 );
@@ -55,6 +65,10 @@ sampler RandomRotationSampler				: register( s5 );	//  Random rotation sampler
 sampler FlashlightDepthSampler				: register( s7 );
 #endif
 
+#if PHONGMASK == PHONGMASK_STANDALONE
+sampler PhongMaskSampler					: register( s9 );
+#endif
+
 struct PS_INPUT
 {
 	float4 spotTexCoord						: TEXCOORD0;
@@ -64,8 +78,13 @@ struct PS_INPUT
 	float2 baseTexCoord						: TEXCOORD1;
 #endif
 #if NORMALMAP
+#if PHONG
+	float4 tangentPosToLightVector			: TEXCOORD2;
+	float4 normalMapTexCoord				: TEXCOORD3;
+#else
 	float3 tangentPosToLightVector			: TEXCOORD2;
 	float2 normalMapTexCoord				: TEXCOORD3;
+#endif
 #else
 	float3 worldPosToLightVector			: TEXCOORD2;
 	float3 normal							: TEXCOORD3;
@@ -129,6 +148,10 @@ float4 main( PS_INPUT i ) : COLOR
 		else
 		{
 #else
+	clip( vProjCoords.xyz );
+#if defined( SHADER_MODEL_PS_2_B ) || defined( SHADER_MODEL_PS_3_0 )
+	clip( 1-vProjCoords.xyz );
+#endif
 	spotColor = tex2D( SpotSampler, vProjCoords );
 #endif
 
@@ -146,7 +169,7 @@ float4 main( PS_INPUT i ) : COLOR
 	GetBaseTextureAndNormal( BaseTextureSampler, BaseTextureSampler2, BumpMapSampler, bBase2, bBump, baseTexCoords, i.fogFactorW.xyz, baseColor, baseColor2, vNormal );
 
 #if WORLDVERTEXTRANSITION
-	float lerpAlpha = 1-i.worldPos_worldTransition.a;
+	float lerpAlpha = i.worldPos_worldTransition.a;
 #endif
 
 #if ( NORMALMAP == 0 )
@@ -158,7 +181,7 @@ float4 main( PS_INPUT i ) : COLOR
 
 #	if NORMALMAP2
 	float3 normal2 = SampleNormal( NormalMap2Sampler, i ) * 2.0f - 1.0f;
-	vNormal.xyz = lerp( normal2, vNormal.xyz, lerpAlpha );
+	vNormal.xyz = lerp( vNormal.xyz, normal2, lerpAlpha );
 #	endif
 #endif
 
@@ -167,7 +190,7 @@ float4 main( PS_INPUT i ) : COLOR
 
 #	if NORMALMAP2
 	float3 normal2 = SampleNormal( NormalMap2Sampler, i );
-	vNormal.xyz = lerp( normal2, vNormal.xyz, lerpAlpha );
+	vNormal.xyz = lerp( vNormal.xyz, normal2, lerpAlpha );
 #	endif
 #else
 	// Normalize normal after all of the lerps above (including the tri/bilinear texel fetches)
@@ -177,7 +200,7 @@ float4 main( PS_INPUT i ) : COLOR
 	spotColor.rgb *= cFlashlightColor.rgb;
 
 	// Compute per-pixel distance attenuation
-	float3 delta = g_EyePos.xyz - i.worldPos_worldTransition.xyz;
+	float3 delta = g_FlashlightPos.xyz - i.worldPos_worldTransition.xyz;
 	float distSquared = dot( delta, delta );
 	float dist = sqrt( distSquared );
 	float farZ = g_FlashlightAttenuation.w;
@@ -192,7 +215,19 @@ float4 main( PS_INPUT i ) : COLOR
 #endif
 
 #if WORLDVERTEXTRANSITION
-	baseColor.xyz = lerp( baseColor2.xyz, baseColor.xyz, lerpAlpha );
+	baseColor = lerp( baseColor, baseColor2, lerpAlpha );
+#endif
+
+#if PHONG
+	float3 vSpecMask = 1;
+	
+#	if PHONGMASK == PHONGMASK_BASEALPHA
+		vSpecMask = baseColor.a;
+#	elif PHONGMASK == PHONGMASK_NORMALALPHA
+		vSpecMask = vNormal.a;
+#	elif PHONGMASK == PHONGMASK_STANDALONE
+		vSpecMask = tex2D( PhongMaskSampler, baseTexCoords ).rgb;
+#	endif
 #endif
 
 #if DETAILTEXTURE
@@ -208,12 +243,12 @@ float4 main( PS_INPUT i ) : COLOR
 
 #if NORMALMAP == 1
 	// flashlightfixme: wrap this!
-	float3 tangentPosToLightVector = texCUBE( NormalizingCubemapSampler, i.tangentPosToLightVector ) * 2.0f - 1.0f;
+	float3 tangentPosToLightVector = texCUBE( NormalizingCubemapSampler, i.tangentPosToLightVector.xyz ) * 2.0f - 1.0f;
 	float nDotL = dot( tangentPosToLightVector, vNormal.xyz );
 #endif
 
 #if NORMALMAP == 2
-	float3 tangentPosToLightVector = normalize( i.tangentPosToLightVector );
+	float3 tangentPosToLightVector = texCUBE( NormalizingCubemapSampler, i.tangentPosToLightVector.xyz ) * 2.0f - 1.0f;
 
 	float nDotL = 
 		vNormal.x*dot( tangentPosToLightVector, bumpBasis[0]) +
@@ -222,8 +257,31 @@ float4 main( PS_INPUT i ) : COLOR
 #endif
 
 	float3 outColor;
+#if PHONG == 0
 	outColor = spotColor * baseColor.xyz * saturate( nDotL );
 	outColor *= flAtten;
+#else
+	outColor = spotColor * baseColor.xyz * flAtten;
+
+	// Not using normalizing cubemap here because of pixelated specular appearance. =/
+#	if NORMALMAP == 0
+		float3 posToLight	= normalize( i.worldPosToLightVector );
+		float3 posToEye		= normalize( g_EyePos.xyz - i.worldPos_worldTransition.xyz);
+#	else
+		float3 posToLight	= normalize( i.tangentPosToLightVector.xyz );
+		float3 posToEye		= normalize( float3(i.tangentPosToLightVector.w, i.normalMapTexCoord.zw) );
+
+#		if NORMALMAP == 2
+			vNormal.xyz = bumpBasis[0]*vNormal.x + bumpBasis[1]*vNormal.y + bumpBasis[2]*vNormal.z;
+			vNormal.xyz = normalize( vNormal.xyz );
+#		endif
+#	endif
+
+	float  fFresnel = Fresnel( vNormal.xyz, posToEye, g_FresnelRanges );
+	float3 specularColor = outColor * SpecularLight( vNormal.xyz, posToLight, g_SpecularExponent, posToEye, false, SpotSampler, fFresnel );
+	outColor *= saturate( nDotL );
+	outColor += specularColor * fFresnel * vSpecMask * g_SpecularBoost;
+#endif
 
 	float fogFactor = CalcPixelFogFactor( PIXELFOGTYPE, g_FogParams, g_EyePos.z, i.worldPos_worldTransition.z, i.projPos.z );
 	return FinalOutput( float4(outColor, baseColor.a) , fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR );

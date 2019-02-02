@@ -91,6 +91,9 @@ $Project "Shaders (Insolence)"
 		$File	"shader_constant_register_map.h"
 
 		$File	"example_model_dx9_helper.h"
+		
+		$File	"common_flashlight_fxc.h"
+		$File	"lightmappedgeneric_dx9_helper.h"
 	}
 
 	$Folder	"Link Libraries" [$WIN32]
