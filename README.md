@@ -1,2 +1,1 @@
-<h1 align="center">insolence-2013</h1>                  
-<h3 align="center">A Half-Life 2 leak-themed mod that attempts to recreate the dark atmosphere of the original storyline.<strike><br>Our goal isn't to completely remake the entire storyline, but to add maps that are worth playing,</strike> <- this was the original plan, but now we are remaking the storyline.<br>We will release it once we all agree that it is done, which is why we don't have clear release date. :)</h3>
+<h1>Fork of insolence-2013</h1>
