@@ -2258,7 +2258,7 @@ CBaseGrenade* CAI_BaseNPC::IncomingGrenade(void)
 //-----------------------------------------------------------------------------
 void CAI_BaseNPC::TryRestoreHull(void)
 {
-	if ( IsUsingSmallHull() && GetCurSchedule() )
+	if ( IsUsingSmallHull() && GetCurSchedule() && GetCurSchedule()->GetId() != SCHED_GIVE_WAY )
 	{
 		trace_t tr;
 		Vector	vUpBit = GetAbsOrigin();

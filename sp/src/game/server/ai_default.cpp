@@ -133,6 +133,7 @@ void CAI_BaseNPC::InitDefaultScheduleSR(void)
 	ADD_DEF_SCHEDULE( "SCHED_MOVE_AWAY_FAIL",				SCHED_MOVE_AWAY_FAIL);
 	ADD_DEF_SCHEDULE( "SCHED_MOVE_AWAY_END",				SCHED_MOVE_AWAY_END);
 	ADD_DEF_SCHEDULE( "SCHED_WAIT_FOR_SPEAK_FINISH",		SCHED_WAIT_FOR_SPEAK_FINISH);
+	ADD_DEF_SCHEDULE( "SCHED_GIVE_WAY",						SCHED_GIVE_WAY);
 	ADD_DEF_SCHEDULE( "SCHED_FORCED_GO",					SCHED_FORCED_GO);
 	ADD_DEF_SCHEDULE( "SCHED_FORCED_GO_RUN",				SCHED_FORCED_GO_RUN);
 	ADD_DEF_SCHEDULE( "SCHED_PATROL_WALK",					SCHED_PATROL_WALK);
@@ -229,6 +230,7 @@ bool CAI_BaseNPC::LoadDefaultSchedules(void)
 	AI_LOAD_DEF_SCHEDULE( CAI_BaseNPC,					SCHED_MOVE_AWAY_FAIL);
 	AI_LOAD_DEF_SCHEDULE( CAI_BaseNPC,					SCHED_MOVE_AWAY_END);
 	AI_LOAD_DEF_SCHEDULE( CAI_BaseNPC,					SCHED_WAIT_FOR_SPEAK_FINISH);
+	AI_LOAD_DEF_SCHEDULE( CAI_BaseNPC,					SCHED_GIVE_WAY);
 	AI_LOAD_DEF_SCHEDULE( CAI_BaseNPC,					SCHED_FORCED_GO);
 	AI_LOAD_DEF_SCHEDULE( CAI_BaseNPC,					SCHED_FORCED_GO_RUN);
 	AI_LOAD_DEF_SCHEDULE( CAI_BaseNPC,					SCHED_PATROL_WALK);
@@ -1843,6 +1845,37 @@ AI_DEFINE_SCHEDULE
 	"		COND_NEW_ENEMY"
 	"		COND_ENEMY_DEAD"
 	"		COND_SEE_ENEMY"
+);
+
+//=========================================================
+// > Give_Way
+//
+// Get out of the way of someone that requested a move
+//=========================================================
+AI_DEFINE_SCHEDULE
+(
+	SCHED_GIVE_WAY,
+
+	"	Tasks"
+		//  Disable use of small hull for now.  Introduces movement bugs"
+	//"		TASK_USE_SMALL_HULL				0"
+	//"		TASK_REMEMBER					MEMORY:IN_SMALL_HULL"
+	""
+	"		TASK_SET_ROUTE_SEARCH_TIME		0.5"	// Spend 1/2 seconds trying to build a path if stuck
+	"		TASK_SET_TOLERANCE_DISTANCE		5"
+	"		TASK_GET_PATH_TO_SAVEPOSITION	2"
+	"		TASK_RUN_PATH_TIMED				2.0"
+	"		TASK_WAIT_FOR_MOVEMENT			0"
+	""
+	"	Interrupts"
+	"		COND_GIVE_WAY"
+	"		COND_WAY_CLEAR"
+	"		COND_NEW_ENEMY"
+	"		COND_SEE_FEAR"
+	"		COND_LIGHT_DAMAGE"
+	"		COND_HEAVY_DAMAGE"
+	"		COND_SMELL"
+	"		COND_PROVOKED"
 );
 
 //=========================================================
