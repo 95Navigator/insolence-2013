@@ -1,0 +1,15 @@
+//
+// Standard shaders collection - short version
+//
+//  These shaders are compiled as the following shader models:
+//	    _ps20.vcs
+//	    _ps20b.vcs
+//	    _vs20.vcs
+//
+
+SDK_flashlight_ps2x.fxc
+SDK_flashlight_ps11.fxc
+SDK_lightmappedgeneric_flashlight_vs11.fxc
+SDK_lightmappedgeneric_flashlight_vs20.fxc
+
+SDK_vertexlit_and_unlit_generic_ps20b.fxc

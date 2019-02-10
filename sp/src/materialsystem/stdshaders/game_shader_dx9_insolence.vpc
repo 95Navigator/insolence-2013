@@ -94,6 +94,7 @@ $Project "Shaders (Insolence)"
 		
 		$File	"common_flashlight_fxc.h"
 		$File	"lightmappedgeneric_dx9_helper.h"
+		$File	"lightmappedgeneric_ps2_3_x.h"
 	}
 
 	$Folder	"Link Libraries" [$WIN32]
@@ -108,11 +109,16 @@ $Project "Shaders (Insolence)"
     }
 
 	$File	"buildinsolenceshaders.bat"
+	$File	"buildinsolenceshadersshort.bat"
+	
 	$File	"buildsdkshaders.bat"
 	$File	"buildshaders.bat"
 
 	$Shaders	"stdshader_dx9_20b.txt"
+	$Shaders	"stdshader_dx9_20b_short.txt"
 	$Shaders	"stdshader_dx9_30.txt"
+	$Shaders	"stdshader_dx9_30_short.txt"
+	
 	$Shaders	"insolence_dx9_20b.txt"
 	$Shaders	"insolence_dx9_30.txt"
 }

@@ -20,7 +20,6 @@ SDK_emissive_scroll_blended_pass_ps2x.fxc
 SDK_emissive_scroll_blended_pass_vs20.fxc
 
 SDK_flashlight_ps2x.fxc
-SDK_lightmappedgeneric_flashlight_ps2x.fxc
 SDK_lightmappedgeneric_flashlight_vs20.fxc
 SDK_lightmappedgeneric_ps20b.fxc
 SDK_lightmappedgeneric_vs20.fxc
