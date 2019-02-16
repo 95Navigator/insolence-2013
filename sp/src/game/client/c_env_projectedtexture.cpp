@@ -18,7 +18,10 @@
 #include "tier0/memdbgon.h"
 
 static ConVar mat_slopescaledepthbias_shadowmap( "mat_slopescaledepthbias_shadowmap", "16", FCVAR_CHEAT );
-static ConVar mat_depthbias_shadowmap(	"mat_depthbias_shadowmap", "0.00001", FCVAR_CHEAT  );
+static ConVar mat_depthbias_shadowmap(	"mat_depthbias_shadowmap", "0.0005", FCVAR_CHEAT  );
+
+static ConVar mat_resolution_shadowmap(	"mat_resolution_shadowmap", "1024.0", FCVAR_CHEAT  );
+static ConVar mat_filtersize_shadowmap(	"mat_filtersize_shadowmap", "3.0", FCVAR_CHEAT  );
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -34,7 +37,7 @@ public:
 
 	virtual void Simulate();
 
-	void	UpdateLight( bool bForceUpdate );
+	void	UpdateLight( void );
 
 	C_EnvProjectedTexture();
 	~C_EnvProjectedTexture();
@@ -42,10 +45,12 @@ public:
 private:
 
 	ClientShadowHandle_t m_LightHandle;
+	bool m_bForceUpdate;
 
 	EHANDLE	m_hTargetEntity;
 
 	bool	m_bState;
+	bool	m_bAlwaysUpdate;
 	float	m_flLightFOV;
 	bool	m_bEnableShadows;
 	bool	m_bLightOnlyTarget;
@@ -63,6 +68,7 @@ private:
 IMPLEMENT_CLIENTCLASS_DT( C_EnvProjectedTexture, DT_EnvProjectedTexture, CEnvProjectedTexture )
 	RecvPropEHandle( RECVINFO( m_hTargetEntity )	),
 	RecvPropBool(	 RECVINFO( m_bState )			),
+	RecvPropBool(	 RECVINFO( m_bAlwaysUpdate )	),
 	RecvPropFloat(	 RECVINFO( m_flLightFOV )		),
 	RecvPropBool(	 RECVINFO( m_bEnableShadows )	),
 	RecvPropBool(	 RECVINFO( m_bLightOnlyTarget ) ),
@@ -80,6 +86,7 @@ END_RECV_TABLE()
 C_EnvProjectedTexture::C_EnvProjectedTexture( void )
 {
 	m_LightHandle = CLIENTSHADOW_INVALID_HANDLE;
+	m_bForceUpdate = true;
 }
 
 C_EnvProjectedTexture::~C_EnvProjectedTexture( void )
@@ -103,12 +110,18 @@ void C_EnvProjectedTexture::ShutDownLightHandle( void )
 //-----------------------------------------------------------------------------
 void C_EnvProjectedTexture::OnDataChanged( DataUpdateType_t updateType )
 {
-	UpdateLight( true );
+	m_bForceUpdate = true;
+	UpdateLight();
 	BaseClass::OnDataChanged( updateType );
 }
 
-void C_EnvProjectedTexture::UpdateLight( bool bForceUpdate )
+void C_EnvProjectedTexture::UpdateLight( void )
 {
+	if ( m_bAlwaysUpdate )
+	{
+		m_bForceUpdate = true;
+	}
+
 	if ( m_bState == false )
 	{
 		if ( m_LightHandle != CLIENTSHADOW_INVALID_HANDLE )
@@ -190,6 +203,10 @@ void C_EnvProjectedTexture::UpdateLight( bool bForceUpdate )
 	state.m_FarZ = m_flFarZ;
 	state.m_flShadowSlopeScaleDepthBias = mat_slopescaledepthbias_shadowmap.GetFloat();
 	state.m_flShadowDepthBias = mat_depthbias_shadowmap.GetFloat();
+
+	state.m_flShadowMapResolution = mat_resolution_shadowmap.GetFloat();
+	state.m_flShadowFilterSize = mat_filtersize_shadowmap.GetFloat();
+
 	state.m_bEnableShadows = m_bEnableShadows;
 	state.m_pSpotlightTexture = materials->FindTexture( m_SpotlightTextureName, TEXTURE_GROUP_OTHER, false );
 	state.m_nSpotlightTextureFrame = m_nSpotlightTextureFrame;
@@ -199,13 +216,19 @@ void C_EnvProjectedTexture::UpdateLight( bool bForceUpdate )
 	if( m_LightHandle == CLIENTSHADOW_INVALID_HANDLE )
 	{
 		m_LightHandle = g_pClientShadowMgr->CreateFlashlight( state );
+
+		if ( m_LightHandle != CLIENTSHADOW_INVALID_HANDLE )
+		{
+			m_bForceUpdate = false;
+		}
 	}
 	else
 	{
-		if ( m_hTargetEntity != NULL || bForceUpdate == true )
+		if ( m_hTargetEntity != NULL || m_bForceUpdate == true )
 		{
 			g_pClientShadowMgr->UpdateFlashlightState( m_LightHandle, state );
 		}
+		m_bForceUpdate = false;
 	}
 
 	if( m_bLightOnlyTarget )
@@ -219,15 +242,15 @@ void C_EnvProjectedTexture::UpdateLight( bool bForceUpdate )
 
 	g_pClientShadowMgr->SetFlashlightLightWorld( m_LightHandle, m_bLightWorld );
 
-	//if ( bForceUpdate == false )
-	//{
+	if ( !m_bForceUpdate )
+	{
 		g_pClientShadowMgr->UpdateProjectedTexture( m_LightHandle, true );
-	//}
+	}
 }
 
 void C_EnvProjectedTexture::Simulate( void )
 {
-	UpdateLight( GetMoveParent() != NULL );
+	UpdateLight();
 
 	BaseClass::Simulate();
 }
