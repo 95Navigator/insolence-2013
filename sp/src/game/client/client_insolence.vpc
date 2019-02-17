@@ -133,5 +133,11 @@ $Project "Client (Insolence)"
 			$File	"hl2\vgui_rootpanel_hl2.cpp"
 			$File 	"episodic\c_vort_charge_token.cpp"
 		}
+		
+		$Folder "Insolence DLL"
+		{
+			$File	"insolence\materialsystem_passtru.h"
+			$File	"insolence\ay_matsys.cpp"
+		}
 	}
 }

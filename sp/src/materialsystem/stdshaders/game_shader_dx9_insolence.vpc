@@ -115,8 +115,8 @@ $Project "Shaders (Insolence)"
 	$File	"buildshaders.bat"
 
 	$Shaders	"stdshader_dx9_20b.txt"
-	$Shaders	"stdshader_dx9_20b_short.txt"
 	$Shaders	"stdshader_dx9_30.txt"
+	$Shaders	"stdshader_dx9_20b_short.txt"
 	$Shaders	"stdshader_dx9_30_short.txt"
 	
 	$Shaders	"insolence_dx9_20b.txt"

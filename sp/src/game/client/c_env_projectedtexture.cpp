@@ -20,9 +20,6 @@
 static ConVar mat_slopescaledepthbias_shadowmap( "mat_slopescaledepthbias_shadowmap", "16", FCVAR_CHEAT );
 static ConVar mat_depthbias_shadowmap(	"mat_depthbias_shadowmap", "0.0005", FCVAR_CHEAT  );
 
-static ConVar mat_resolution_shadowmap(	"mat_resolution_shadowmap", "1024.0", FCVAR_CHEAT  );
-static ConVar mat_filtersize_shadowmap(	"mat_filtersize_shadowmap", "3.0", FCVAR_CHEAT  );
-
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -203,10 +200,6 @@ void C_EnvProjectedTexture::UpdateLight( void )
 	state.m_FarZ = m_flFarZ;
 	state.m_flShadowSlopeScaleDepthBias = mat_slopescaledepthbias_shadowmap.GetFloat();
 	state.m_flShadowDepthBias = mat_depthbias_shadowmap.GetFloat();
-
-	state.m_flShadowMapResolution = mat_resolution_shadowmap.GetFloat();
-	state.m_flShadowFilterSize = mat_filtersize_shadowmap.GetFloat();
-
 	state.m_bEnableShadows = m_bEnableShadows;
 	state.m_pSpotlightTexture = materials->FindTexture( m_SpotlightTextureName, TEXTURE_GROUP_OTHER, false );
 	state.m_nSpotlightTextureFrame = m_nSpotlightTextureFrame;
