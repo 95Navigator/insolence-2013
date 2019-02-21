@@ -434,6 +434,20 @@ struct FlashlightState_t
 		m_nRight = -1;
 		m_nBottom = -1;
 		m_nShadowQuality = 0;
+
+		m_bOrtho = false;
+		m_fOrthoLeft = -1.0f;
+		m_fOrthoRight = 1.0f;
+		m_fOrthoTop = -1.0f;
+		m_fOrthoBottom = 1.0f;
+
+		m_fBrightnessScale = 1.0f;
+		m_pSpotlightTexture = NULL;
+		m_pProjectedMaterial = NULL;
+
+		m_bSimpleProjection = false;
+		m_flProjectionSize = 500.0f;
+		m_flProjectionRotation = 0.0f;
 	}
 
 	Vector m_vecLightOrigin;
@@ -459,6 +473,21 @@ struct FlashlightState_t
 	float m_flShadowJitterSeed;
 	float m_flShadowAtten;
 	int   m_nShadowQuality;
+
+	bool  m_bOrtho;
+	float m_fOrthoLeft;
+	float m_fOrthoRight;
+	float m_fOrthoTop;
+	float m_fOrthoBottom;
+
+	float m_FarZAtten;
+	float m_fBrightnessScale;
+	IMaterial *m_pProjectedMaterial;
+
+	// simple projection
+	bool	m_bSimpleProjection;
+	float	m_flProjectionSize;
+	float	m_flProjectionRotation;
 
 	// Getters for scissor members
 	bool DoScissor() { return m_bScissor; }

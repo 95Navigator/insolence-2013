@@ -291,4 +291,9 @@ $Project "Server (Insolence)"
 			$File	"hl2\weapon_sniperrifle.cpp"
 		}
 	}
+	
+	$Folder "Header Files"
+	{
+		$File	"env_projectedtexture.h"
+	}
 }

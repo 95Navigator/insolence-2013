@@ -725,6 +725,11 @@ public:
 	virtual void UpdateFlashlightState( ClientShadowHandle_t shadowHandle, const FlashlightState_t &lightState );
 	virtual void DestroyFlashlight( ClientShadowHandle_t shadowHandle );
 
+	// Create simple projected texture.  it is not a light or a shadow, but this system does most of the work already for it
+	virtual ClientShadowHandle_t CreateProjection( const FlashlightState_t &lightState );
+	virtual void UpdateProjectionState( ClientShadowHandle_t shadowHandle, const FlashlightState_t &lightState );
+	virtual void DestroyProjection( ClientShadowHandle_t shadowHandle );
+
 	// Update a shadow
 	virtual void UpdateProjectedTexture( ClientShadowHandle_t handle, bool force );
 
@@ -748,6 +753,8 @@ public:
 
 	// Kicks off rendering into shadow depth maps (if any)
 	void ComputeShadowDepthTextures( const CViewSetup &view );
+
+	void GetFrustumExtents( ClientShadowHandle_t handle, Vector &vecMin, Vector &vecMax );
 
 	// Frees shadow depth textures for use in subsequent view/frame
 	void FreeShadowDepthTextures();
@@ -842,6 +849,8 @@ private:
 	void BuildWorldToShadowMatrix( VMatrix& matWorldToShadow, const Vector& origin, const Quaternion& quatOrientation );
 
 	void BuildPerspectiveWorldToFlashlightMatrix( VMatrix& matWorldToShadow, const FlashlightState_t &flashlightState );
+
+	void BuildOrthoWorldToFlashlightMatrix( VMatrix& matWorldToShadow, const FlashlightState_t &flashlightState );
 
 	// Update a shadow
 	void UpdateProjectedTextureInternal( ClientShadowHandle_t handle, bool force );
@@ -1913,6 +1922,54 @@ void CClientShadowMgr::DestroyFlashlight( ClientShadowHandle_t shadowHandle )
 	DestroyShadow( shadowHandle );
 }
 
+
+ClientShadowHandle_t CClientShadowMgr::CreateProjection( const FlashlightState_t &lightState )
+{
+//	return CreateFlashlight(lightState);
+
+	// We don't really need a model entity handle for a projective light source, so use an invalid one.
+	static ClientEntityHandle_t invalidHandle = INVALID_CLIENTENTITY_HANDLE;
+
+	int shadowFlags = SHADOW_FLAGS_SIMPLE_PROJECTION;
+
+	/*ClientShadowHandle_t shadowHandle = CreateProjectedTexture( invalidHandle, -1, shadowFlags, NULL );*/
+	ClientShadowHandle_t shadowHandle = CreateProjectedTexture( invalidHandle, shadowFlags );
+
+	UpdateFlashlightState( shadowHandle, lightState );
+	UpdateProjectedTexture( shadowHandle, true );
+
+	return shadowHandle;
+}
+
+
+//-----------------------------------------------------------------------------
+// Updates the flashlight direction and re-computes surfaces it should lie on
+//-----------------------------------------------------------------------------
+void CClientShadowMgr::UpdateProjectionState( ClientShadowHandle_t shadowHandle, const FlashlightState_t &flashlightState )
+{
+//	UpdateFlashlightState(shadowHandle, flashlightState );
+//	return;
+
+	VPROF_BUDGET( "CClientShadowMgr::UpdateProjectionState", VPROF_BUDGETGROUP_SHADOW_DEPTH_TEXTURING );
+
+	if ( flashlightState.m_bOrtho )
+	{
+		BuildOrthoWorldToFlashlightMatrix( m_Shadows[shadowHandle].m_WorldToShadow, flashlightState );
+	}
+	else
+	{
+		BuildPerspectiveWorldToFlashlightMatrix( m_Shadows[shadowHandle].m_WorldToShadow, flashlightState );
+	}
+
+	shadowmgr->UpdateFlashlightState( m_Shadows[shadowHandle].m_ShadowHandle, flashlightState );
+}
+
+void CClientShadowMgr::DestroyProjection( ClientShadowHandle_t shadowHandle )
+{
+	DestroyShadow( shadowHandle );
+}
+
+
 //-----------------------------------------------------------------------------
 // Remove a shadow from the dirty list
 //-----------------------------------------------------------------------------
@@ -2010,6 +2067,38 @@ void CClientShadowMgr::BuildPerspectiveWorldToFlashlightMatrix( VMatrix& matWorl
 	MatrixBuildPerspective( matPerspective, flashlightState.m_fHorizontalFOVDegrees,
 							flashlightState.m_fVerticalFOVDegrees,
 							flashlightState.m_NearZ, flashlightState.m_FarZ );
+
+	MatrixMultiply( matPerspective, matWorldToShadowView, matWorldToShadow );
+}
+
+void CClientShadowMgr::BuildOrthoWorldToFlashlightMatrix( VMatrix& matWorldToShadow, const FlashlightState_t &flashlightState )
+{
+	VPROF_BUDGET( "CClientShadowMgr::BuildPerspectiveWorldToFlashlightMatrix", VPROF_BUDGETGROUP_SHADOW_DEPTH_TEXTURING );
+
+	// Buildworld to shadow matrix, then perspective projection and concatenate
+	VMatrix matWorldToShadowView, matPerspective;
+	BuildWorldToShadowMatrix( matWorldToShadowView, flashlightState.m_vecLightOrigin,
+		flashlightState.m_quatOrientation );
+
+	MatrixBuildOrtho( matPerspective, 
+					  flashlightState.m_fOrthoLeft, flashlightState.m_fOrthoTop, flashlightState.m_fOrthoRight, flashlightState.m_fOrthoBottom,
+					  flashlightState.m_NearZ, flashlightState.m_FarZ );
+
+	// Shift it z/y to 0 to -2 space
+	VMatrix addW;
+	addW.Identity();
+	addW[0][3] = -1.0f;
+	addW[1][3] = -1.0f;
+	addW[2][3] = 0.0f;
+	MatrixMultiply( addW, matPerspective, matPerspective );
+
+	// Flip x/y to positive 0 to 1... flip z to negative
+	VMatrix scaleHalf;
+	scaleHalf.Identity();
+	scaleHalf[0][0] = -0.5f;
+	scaleHalf[1][1] = -0.5f;
+	scaleHalf[2][2] = -1.0f;
+	MatrixMultiply( scaleHalf, matPerspective, matPerspective );
 
 	MatrixMultiply( matPerspective, matWorldToShadowView, matWorldToShadow );
 }
@@ -3906,6 +3995,38 @@ void CClientShadowMgr::SetViewFlashlightState( int nActiveFlashlightCount, Clien
 	}
 }
 
+
+void AddPointToExtentsHelper( const VMatrix &flashlightToWorld, const Vector &vecPos, Vector &vecMin, Vector &vecMax )
+{
+	Vector worldSpacePos;
+
+	Vector3DMultiplyPositionProjective( flashlightToWorld, vecPos, worldSpacePos );
+	VectorMin( vecMin, worldSpacePos, vecMin );
+	VectorMax( vecMax, worldSpacePos, vecMax );
+}
+
+
+void CClientShadowMgr::GetFrustumExtents( ClientShadowHandle_t handle, Vector &vecMin, Vector &vecMax )
+{
+	Assert( m_Shadows.IsValidIndex( handle ) );
+
+	CClientShadowMgr::ClientShadow_t &shadow = m_Shadows[ handle ];
+
+	VMatrix flashlightToWorld;
+	MatrixInverseGeneral( shadow.m_WorldToShadow, flashlightToWorld );
+
+	vecMin = Vector( FLT_MAX, FLT_MAX, FLT_MAX );
+	vecMax = Vector( -FLT_MAX, -FLT_MAX, -FLT_MAX );
+
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 0.0f, 0.0f, 0.0f ), vecMin, vecMax );
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 0.0f, 0.0f, 1.0f ), vecMin, vecMax );
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 0.0f, 1.0f, 0.0f ), vecMin, vecMax );
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 1.0f, 0.0f, 0.0f ), vecMin, vecMax );
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 0.0f, 1.0f, 1.0f ), vecMin, vecMax );
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 1.0f, 0.0f, 1.0f ), vecMin, vecMax );
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 1.0f, 1.0f, 0.0f ), vecMin, vecMax );
+	AddPointToExtentsHelper( flashlightToWorld, Vector( 1.0f, 1.0f, 1.0f ), vecMin, vecMax );
+}
 
 //-----------------------------------------------------------------------------
 // Re-render shadow depth textures that lie in the leaf list

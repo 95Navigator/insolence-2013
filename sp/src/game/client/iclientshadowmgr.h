@@ -51,6 +51,11 @@ public:
 	virtual ClientShadowHandle_t CreateFlashlight( const FlashlightState_t &lightState ) = 0;
 	virtual void UpdateFlashlightState( ClientShadowHandle_t shadowHandle, const FlashlightState_t &lightState ) = 0;
 	virtual void DestroyFlashlight( ClientShadowHandle_t handle ) = 0;
+
+	// Create simple projected texture.  it is not a light or a shadow, but this system does most of the work already for it
+	virtual ClientShadowHandle_t CreateProjection( const FlashlightState_t &lightState ) = 0;
+	virtual void UpdateProjectionState( ClientShadowHandle_t shadowHandle, const FlashlightState_t &lightState ) = 0;
+	virtual void DestroyProjection( ClientShadowHandle_t handle ) = 0;
 	
 	// Indicate that the shadow should be recomputed due to a change in
 	// the client entity
@@ -101,6 +106,7 @@ public:
 
 	virtual void ComputeShadowDepthTextures( const CViewSetup &pView ) = 0;
 
+	virtual void GetFrustumExtents( ClientShadowHandle_t handle, Vector &vecMin, Vector &vecMax ) = 0;
 };
 
 

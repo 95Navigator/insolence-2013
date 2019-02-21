@@ -140,4 +140,9 @@ $Project "Client (Insolence)"
 			$File	"insolence\ay_matsys.cpp"
 		}
 	}
+	
+	$Folder "Header Files"
+	{
+		$File	"C_Env_Projected_Texture.h"
+	}
 }
