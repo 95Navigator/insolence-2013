@@ -385,8 +385,11 @@ FORCEINLINE float ShadowAttenFromState( FlashlightState_t const &state )
 
 FORCEINLINE float ShadowFilterFromState( FlashlightState_t const &state )
 {
-	// We developed shadow maps at 1024, so we expect the penumbra size to have been tuned relative to that
-	return state.m_flShadowFilterSize / 1024.0f;
+	//// We developed shadow maps at 1024, so we expect the penumbra size to have been tuned relative to that
+	//return state.m_flShadowFilterSize / 1024.0f;
+
+	// INSOLENCE: Get the shadow map resolution from the same place we get the shadow filter size
+	return state.m_flShadowFilterSize / state.m_flShadowMapResolution;
 }
 
 

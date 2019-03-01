@@ -12,17 +12,14 @@
 #include "materialsystem/imaterial.h"
 #include "view.h"
 #include "iviewrender.h"
-#include "tier0/vprof.h"
 #include "view_shared.h"
 #include "texture_group_names.h"
 #include "tier0/icommandline.h"
+#include "tier0/vprof.h"
 
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
-
-static ConVar mat_slopescaledepthbias_shadowmap( "mat_slopescaledepthbias_shadowmap", "16", FCVAR_CHEAT );
-static ConVar mat_depthbias_shadowmap(	"mat_depthbias_shadowmap", "0.0005", FCVAR_CHEAT  );
 
 float C_EnvProjectedTexture::m_flVisibleBBoxMinHeight = -FLT_MAX;
 
@@ -353,8 +350,6 @@ void C_EnvProjectedTexture::UpdateLight( void )
 		state.m_Color[3] = 0.0f; // fixme: need to make ambient work m_flAmbient;
 		/*state.m_flShadowSlopeScaleDepthBias = g_pMaterialSystemHardwareConfig->GetShadowSlopeScaleDepthBias();
 		state.m_flShadowDepthBias = g_pMaterialSystemHardwareConfig->GetShadowDepthBias();*/
-		state.m_flShadowSlopeScaleDepthBias = mat_slopescaledepthbias_shadowmap.GetFloat();
-		state.m_flShadowDepthBias = mat_depthbias_shadowmap.GetFloat();
 		state.m_bEnableShadows = m_bEnableShadows;
 		state.m_pSpotlightTexture = m_SpotlightTexture;
 		state.m_pProjectedMaterial = NULL; // only complain if we're using material projection
@@ -376,9 +371,9 @@ void C_EnvProjectedTexture::UpdateLight( void )
 
 		if( m_LightHandle == CLIENTSHADOW_INVALID_HANDLE )
 		{
-			// Hack: env projected textures don't work like normal flashlights; they're not assigned to a given splitscreen slot,
-			// but the flashlight code requires this
-			/*HACK_GETLOCALPLAYER_GUARD( "Env projected texture" );*/
+			//// Hack: env projected textures don't work like normal flashlights; they're not assigned to a given splitscreen slot,
+			//// but the flashlight code requires this
+			//HACK_GETLOCALPLAYER_GUARD( "Env projected texture" );
 			if ( m_bSimpleProjection == true )
 			{
 				m_LightHandle = g_pClientShadowMgr->CreateProjection( state );

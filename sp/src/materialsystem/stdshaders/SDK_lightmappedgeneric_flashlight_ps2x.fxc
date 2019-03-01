@@ -214,7 +214,7 @@ float4 main( PS_INPUT i ) : COLOR
 	spotColor *= flShadow;
 #endif
 
-#if WORLDVERTEXTRANSITION
+#if WORLDVERTEXTRANSITION && !defined( SHADER_MODEL_PS_2_0 )
 	baseColor = lerp( baseColor, baseColor2, lerpAlpha );
 #endif
 
