@@ -336,6 +336,8 @@ private:
 
 };
 
+extern ConVar r_flashlightbrightness;
+
 FORCEINLINE void SetFlashLightColorFromState( FlashlightState_t const &state, IShaderDynamicAPI *pShaderAPI, int nPSRegister=28, bool bFlashlightNoLambert=false )
 {
 	// Old code
@@ -348,8 +350,7 @@ FORCEINLINE void SetFlashLightColorFromState( FlashlightState_t const &state, IS
 	//	flToneMapScale = 1.0f;
 	//float flFlashlightScale = 1.0f / flToneMapScale;
 
-	// Force flashlight to 25% bright always
-	float flFlashlightScale = 0.25f;
+	float flFlashlightScale = r_flashlightbrightness.GetFloat();
 
 	if ( !g_pHardwareConfig->GetHDREnabled() )
 	{
@@ -362,6 +363,9 @@ FORCEINLINE void SetFlashLightColorFromState( FlashlightState_t const &state, IS
 	{
 		flFlashlightScale *= 2.5f; // Magic number that works well on the NVIDIA 8800
 	}
+
+	// INSOLENCE: This causes very odd projected texture flickering bugs, so it's commented out for now
+	/*flFlashlightScale *= state.m_fBrightnessScale;*/
 
 	// Generate pixel shader constant
 	float const *pFlashlightColor = state.m_Color;

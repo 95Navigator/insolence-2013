@@ -48,6 +48,17 @@ static void ShaderReplaceReplMat( const char *szNewShadername, IMaterial *pMat )
 	const char *pszOldShadername = pMat->GetShaderName();
 	const char *pszMatname = pMat->GetName();
 
+	bool alphaBlending = pMat->IsTranslucent() || pMat->GetMaterialVarFlag( MATERIAL_VAR_TRANSLUCENT );
+	bool translucentOverride = pMat->IsAlphaTested() || pMat->GetMaterialVarFlag( MATERIAL_VAR_ALPHATEST );
+	bool bSelfillum = pMat->GetMaterialVarFlag( MATERIAL_VAR_SELFILLUM );
+	bool bDecal = ( pszOldShadername != NULL && Q_stristr( pszOldShadername, "decal" ) != NULL ) || 
+				  ( pszMatname != NULL && Q_stristr( pszMatname, "decal" ) != NULL ) || 
+					pMat->GetMaterialVarFlag( MATERIAL_VAR_DECAL );
+
+	// INSOLENCE: Temporary fix to unexplainable lightmappedgeneric decal problem
+	if( bDecal )
+		return;
+
 	KeyValues *msg = new KeyValues( szNewShadername );
 
 	int nParams = pMat->ShaderParamCount();
@@ -133,11 +144,6 @@ static void ShaderReplaceReplMat( const char *szNewShadername, IMaterial *pMat )
 		}
 	}
 
-	bool alphaBlending = pMat->IsTranslucent() || pMat->GetMaterialVarFlag( MATERIAL_VAR_TRANSLUCENT );
-	bool translucentOverride = pMat->IsAlphaTested() || pMat->GetMaterialVarFlag( MATERIAL_VAR_ALPHATEST );
-	bool bSelfillum = pMat->GetMaterialVarFlag( MATERIAL_VAR_SELFILLUM );
-	bool bDecal = pszOldShadername != NULL && Q_stristr( pszOldShadername, "decal" ) != NULL || pszMatname != NULL && Q_stristr( pszMatname, "decal" ) != NULL || pMat->GetMaterialVarFlag( MATERIAL_VAR_DECAL );
-
 	if ( bDecal )
 		msg->SetInt("$decal", 1);
 	
@@ -166,13 +172,20 @@ static void ShaderReplaceReplMat( const char *szNewShadername, IMaterial *pMat )
 		msg->SetInt("$halflambert", 1);
 
 	if (bSelfillum)
-	{
 		msg->SetInt("$selfillum", 1);
-	}
 
 	// INSOLENCE: This is important! Otherwise cubemaps will reflect 100% across the whole material!
 	if (pMat->GetMaterialVarFlag(MATERIAL_VAR_BASEALPHAENVMAPMASK))
 		msg->SetInt("$basealphaenvmapmask", 1);
+
+	if (pMat->GetMaterialVarFlag(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK))
+		msg->SetInt("$normalmapalphaenvmapmask", 1);
+
+	if (pMat->GetMaterialVarFlag(MATERIAL_VAR_VERTEXCOLOR))
+		msg->SetInt("$vertexcolor", 1);
+
+	if (pMat->GetMaterialVarFlag(MATERIAL_VAR_VERTEXALPHA))
+		msg->SetInt("$vertexalpha", 1);
 
 	pMat->SetShaderAndParams(msg);
 
@@ -273,12 +286,12 @@ public:
 		Enable(); 
 		return true; 
 	}
+
 	virtual void Shutdown() { Disable(); }
 	virtual void LevelShutdownPostEntity() { /*matCount = 0;*/ }
 
 	void Enable();
 	void Disable();
-	bool IsEnabled() const { return m_pOldMaterialSystem != NULL; }
 
 private:
 	CReplMaterialSystem m_MatSysPassTru;
@@ -287,40 +300,11 @@ private:
 
 static ReplacementSystem s_ReplacementSystem;
 
-void ReplacementSystem::Enable()
+void AYMatsysEnableCallback( IConVar *pConVar, char const *pOldString, float flOldValue )
 {
-	replMatPossible = true; //CommandLine()->CheckParm("-experimental");
+	ConVarRef var( pConVar );
 
-	if( m_pOldMaterialSystem || !replMatPossible )
-		return;
-
-	DevMsg("Enabled material replacement system.\n");
-
-	// Replace material system
-	m_MatSysPassTru.InitPassThru( materials );
-
-	m_pOldMaterialSystem = materials;
-	materials = &m_MatSysPassTru;
-	g_pMaterialSystem = &m_MatSysPassTru;
-	engine->Mat_Stub( &m_MatSysPassTru );
-}
-
-void ReplacementSystem::Disable()
-{
-	if( m_pOldMaterialSystem )
-	{
-		DevMsg("Disabled material replacement system.\n");
-
-		materials = m_pOldMaterialSystem;
-		g_pMaterialSystem = m_pOldMaterialSystem;
-		engine->Mat_Stub( m_pOldMaterialSystem );
-		m_pOldMaterialSystem = NULL;
-	}
-}
-
-CON_COMMAND_F( ay_matsys_toggle, "Toggle shader replacement procedure.", FCVAR_CHEAT )
-{
-	if( s_ReplacementSystem.IsEnabled() )
+	if (var.GetInt() == 0)
 	{
 		s_ReplacementSystem.Disable();
 	}
@@ -333,15 +317,38 @@ CON_COMMAND_F( ay_matsys_toggle, "Toggle shader replacement procedure.", FCVAR_C
 	materials->CacheUsedMaterials();
 	materials->ReloadMaterials();
 }
+ConVar ay_matsys_enable( "ay_matsys_enable", "0", FCVAR_ARCHIVE, "", AYMatsysEnableCallback );
 
-CON_COMMAND_F( ay_matsys_check_status, "Check status of shader replacement procedure.", FCVAR_CHEAT )
+void ReplacementSystem::Enable()
 {
-	if( s_ReplacementSystem.IsEnabled() )
+	if ( ay_matsys_enable.GetInt() == 1 )
 	{
-		ConColorMsg(COLOR_GREEN, "Material replacement system is enabled.\n");
+		replMatPossible = true; //CommandLine()->CheckParm("-experimental");
+
+		if( m_pOldMaterialSystem || !replMatPossible )
+			return;
+
+		DevMsg("Enabled material replacement system.\n");
+
+		// Replace material system
+		m_MatSysPassTru.InitPassThru( materials );
+
+		m_pOldMaterialSystem = materials;
+		materials = &m_MatSysPassTru;
+		g_pMaterialSystem = &m_MatSysPassTru;
+		engine->Mat_Stub( &m_MatSysPassTru );
 	}
-	else
+}
+
+void ReplacementSystem::Disable()
+{
+	if( m_pOldMaterialSystem )
 	{
-		ConColorMsg(COLOR_RED, "Material replacement system is disabled.\n");
+		DevMsg("Disabled material replacement system.\n");
+
+		materials = m_pOldMaterialSystem;
+		g_pMaterialSystem = m_pOldMaterialSystem;
+		engine->Mat_Stub( m_pOldMaterialSystem );
+		m_pOldMaterialSystem = NULL;
 	}
 }

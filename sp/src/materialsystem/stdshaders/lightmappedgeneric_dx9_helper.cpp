@@ -511,6 +511,17 @@ void DrawLightmappedGenericFlashlight_DX9_Internal( CBaseVSShader *pShader, IMat
 		ITexture *pFlashlightDepthTexture;
 		FlashlightState_t flashlightState = pShaderAPI->GetFlashlightStateEx( worldToTexture, &pFlashlightDepthTexture );
 
+		if ( pFlashlightDepthTexture == NULL )
+		{
+			const int iFlashlightShadowIndex = ( flashlightState.m_nShadowQuality >> 16 ) - 1;
+
+			if ( iFlashlightShadowIndex >= 0
+				&& iFlashlightShadowIndex <= ( INT_FLASHLIGHT_DEPTHTEXTURE_FALLBACK_LAST - INT_FLASHLIGHT_DEPTHTEXTURE_FALLBACK_FIRST ) )
+			{
+				pFlashlightDepthTexture = (ITexture*)pShaderAPI->GetIntRenderingParameter( INT_FLASHLIGHT_DEPTHTEXTURE_FALLBACK_FIRST + iFlashlightShadowIndex );
+			}
+		}
+
 		SetFlashLightColorFromState( flashlightState, pShaderAPI );
 
 		pShader->BindTexture( SHADER_SAMPLER0, flashlightState.m_pSpotlightTexture, flashlightState.m_nSpotlightTextureFrame );
@@ -522,7 +533,7 @@ void DrawLightmappedGenericFlashlight_DX9_Internal( CBaseVSShader *pShader, IMat
 
 			// Tweaks associated with a given flashlight
 			float tweaks[4];
-			tweaks[0] = flashlightState.m_flShadowFilterSize / flashlightState.m_flShadowMapResolution;
+			tweaks[0] = ShadowFilterFromState( flashlightState );
 			tweaks[1] = ShadowAttenFromState( flashlightState );
 			pShader->HashShadow2DJitter( flashlightState.m_flShadowJitterSeed, &tweaks[2], &tweaks[3] );
 			pShaderAPI->SetPixelShaderConstant( PSREG_ENVMAP_TINT__SHADOW_TWEAKS, tweaks, 1 );
@@ -651,6 +662,7 @@ void DrawLightmappedGenericFlashlight_DX9_Internal( CBaseVSShader *pShader, IMat
 		atten[1] = flashlightState.m_fLinearAtten;
 		atten[2] = flashlightState.m_fQuadraticAtten;
 		atten[3] = flashlightState.m_FarZ;
+		/*atten[3] = flashlightState.m_FarZAtten;*/
 		pShaderAPI->SetPixelShaderConstant( PSREG_FLASHLIGHT_ATTENUATION, atten, 1 );
 
 		float lightPos[4];
