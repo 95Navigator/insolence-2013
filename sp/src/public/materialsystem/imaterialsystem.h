@@ -444,6 +444,7 @@ struct FlashlightState_t
 		m_fBrightnessScale = 1.0f;
 		m_pSpotlightTexture = NULL;
 		m_pProjectedMaterial = NULL;
+		m_bGlobalLight = false;
 
 		m_bSimpleProjection = false;
 		m_flProjectionSize = 500.0f;
@@ -483,6 +484,7 @@ struct FlashlightState_t
 	float m_FarZAtten;
 	float m_fBrightnessScale;
 	IMaterial *m_pProjectedMaterial;
+	bool m_bGlobalLight;
 
 	// simple projection
 	bool	m_bSimpleProjection;

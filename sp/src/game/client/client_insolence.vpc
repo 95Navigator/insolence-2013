@@ -137,6 +137,7 @@ $Project "Client (Insolence)"
 		$Folder "Insolence DLL"
 		{
 			$File	"insolence\ay_matsys.cpp"
+			$File	"insolence\c_env_global_light.cpp"
 			$File	"insolence\materialsystem_passtru.h"
 			$File	"insolence\worldlight.h"
 			$File	"insolence\worldlight.cpp"
