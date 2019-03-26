@@ -49,7 +49,6 @@ private:
 	CNetworkVar( bool, m_bAlwaysUpdate );
 	CNetworkVar( float, m_flLightFOV );
 	CNetworkVar( bool, m_bEnableShadows );
-	CNetworkVar( bool, m_bSimpleProjection );
 	CNetworkVar( bool, m_bLightOnlyTarget );
 	CNetworkVar( bool, m_bLightWorld );
 	CNetworkVar( bool, m_bCameraSpace );
@@ -62,8 +61,6 @@ private:
 	CNetworkVar( float, m_flNearZ );
 	CNetworkVar( float, m_flFarZ );
 	CNetworkVar( int, m_nShadowQuality );
-	CNetworkVar( float, m_flProjectionSize );
-	CNetworkVar( float, m_flRotation );
 };
 
 

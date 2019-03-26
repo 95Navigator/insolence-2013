@@ -1,4 +1,4 @@
-﻿//===== Copyright � 1996-2005, Valve Corporation, All rights reserved. ======//
+//===== Copyright � 1996-2005, Valve Corporation, All rights reserved. ======//
 //
 // Purpose: 
 //
@@ -231,8 +231,6 @@ void CFlashlightEffect::UpdateLightTopDown(const Vector &vecPos, const Vector &v
 	state.m_nSpotlightTextureFrame = 0;
 
 	state.m_flShadowAtten = r_flashlightshadowatten.GetFloat();
-	/*state.m_flShadowSlopeScaleDepthBias = g_pMaterialSystemHardwareConfig->GetShadowSlopeScaleDepthBias();
-	state.m_flShadowDepthBias = g_pMaterialSystemHardwareConfig->GetShadowDepthBias();*/
 
 	if( m_FlashlightHandle == CLIENTSHADOW_INVALID_HANDLE )
 	{
@@ -362,7 +360,6 @@ void CFlashlightEffect::UpdateLight(	int nEntIdx, const Vector &vecPos, const Ve
 	if ( pFlashlightTexture )
 	{
 		state.m_pSpotlightTexture = pFlashlightTexture;
-		state.m_pProjectedMaterial = NULL;
 	}
 
 	if( m_FlashlightHandle == CLIENTSHADOW_INVALID_HANDLE )
@@ -509,7 +506,6 @@ bool CFlashlightEffect::UpdateDefaultFlashlightState( FlashlightState_t& state, 
 	if ( m_bMuzzleFlashEnabled )
 	{
 		state.m_pSpotlightTexture = m_MuzzleFlashTexture;
-		state.m_pProjectedMaterial = NULL;
 		state.m_Color[0] = m_flMuzzleFlashBrightness;
 		state.m_Color[1] = m_flMuzzleFlashBrightness;
 		state.m_Color[2] = m_flMuzzleFlashBrightness;
@@ -517,14 +513,11 @@ bool CFlashlightEffect::UpdateDefaultFlashlightState( FlashlightState_t& state, 
 	else
 	{
 		state.m_pSpotlightTexture = m_FlashlightTexture;
-		state.m_pProjectedMaterial = NULL;
 	}
 
 	state.m_nSpotlightTextureFrame = 0;
 
 	state.m_flShadowAtten = r_flashlightshadowatten.GetFloat();
-	/*state.m_flShadowSlopeScaleDepthBias = g_pMaterialSystemHardwareConfig->GetShadowSlopeScaleDepthBias();
-	state.m_flShadowDepthBias = g_pMaterialSystemHardwareConfig->GetShadowDepthBias();*/
 
 	return true;
 }
@@ -776,7 +769,6 @@ void CHeadlightEffect::UpdateLight( const Vector &vecPos, const Vector &vecDir, 
 	state.m_FarZ = r_flashlightfar.GetFloat();
 	state.m_bEnableShadows = true;
 	state.m_pSpotlightTexture = m_FlashlightTexture;
-	state.m_pProjectedMaterial = NULL;
 	state.m_nSpotlightTextureFrame = 0;
 	
 	if( GetFlashlightHandle() == CLIENTSHADOW_INVALID_HANDLE )

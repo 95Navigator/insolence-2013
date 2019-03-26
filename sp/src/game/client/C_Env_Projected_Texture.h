@@ -32,7 +32,6 @@ public:
 	virtual void OnDataChanged( DataUpdateType_t updateType );
 	void	ShutDownLightHandle( void );
 
-	/*virtual bool Simulate();*/
 	virtual void Simulate();
 
 	void	UpdateLight( void );
@@ -59,7 +58,6 @@ private:
 	bool		m_bAlwaysUpdate;
 	float		m_flLightFOV;
 	bool		m_bEnableShadows;
-	bool		m_bSimpleProjection;
 	bool		m_bLightOnlyTarget;
 	bool		m_bLightWorld;
 	bool		m_bCameraSpace;
@@ -75,11 +73,6 @@ private:
 	CTextureReference m_SpotlightTexture;
 	int			m_nSpotlightTextureFrame;
 	int			m_nShadowQuality;
-
-	// simple projection
-	IMaterial	*m_pMaterial;
-	float		m_flProjectionSize;
-	float		m_flRotation;
 
 	Vector	m_vecExtentsMin;
 	Vector	m_vecExtentsMax;

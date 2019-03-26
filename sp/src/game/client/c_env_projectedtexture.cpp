@@ -30,12 +30,10 @@ IMPLEMENT_CLIENTCLASS_DT( C_EnvProjectedTexture, DT_EnvProjectedTexture, CEnvPro
 	RecvPropBool(	 RECVINFO( m_bAlwaysUpdate )	),
 	RecvPropFloat(	 RECVINFO( m_flLightFOV )		),
 	RecvPropBool(	 RECVINFO( m_bEnableShadows )	),
-	RecvPropBool(	 RECVINFO( m_bSimpleProjection )	),
 	RecvPropBool(	 RECVINFO( m_bLightOnlyTarget ) ),
 	RecvPropBool(	 RECVINFO( m_bLightWorld )		),
 	RecvPropBool(	 RECVINFO( m_bCameraSpace )		),
 	RecvPropFloat(	 RECVINFO( m_flBrightnessScale )	),
-	/*RecvPropInt(	 RECVINFO( m_LightColor ), 0, RecvProxy_Int32ToColor32 ),*/
 	RecvPropInt(	 RECVINFO( m_LightColor ), 0, RecvProxy_IntToColor32 ),
 	RecvPropFloat(	 RECVINFO( m_flColorTransitionTime )		),
 	RecvPropFloat(	 RECVINFO( m_flAmbient )		),
@@ -44,8 +42,6 @@ IMPLEMENT_CLIENTCLASS_DT( C_EnvProjectedTexture, DT_EnvProjectedTexture, CEnvPro
 	RecvPropFloat(	 RECVINFO( m_flNearZ )	),
 	RecvPropFloat(	 RECVINFO( m_flFarZ )	),
 	RecvPropInt(	 RECVINFO( m_nShadowQuality )	),
-	RecvPropFloat(	 RECVINFO( m_flProjectionSize )	),
-	RecvPropFloat(	 RECVINFO( m_flRotation )	),
 END_RECV_TABLE()
 
 C_EnvProjectedTexture *C_EnvProjectedTexture::Create( )
@@ -57,7 +53,6 @@ C_EnvProjectedTexture *C_EnvProjectedTexture::Create( )
 //	strcpy( pEnt->m_SpotlightTextureName, "particle/rj" );
 	pEnt->m_bLightWorld = true;
 	pEnt->m_bLightOnlyTarget = false;
-	pEnt->m_bSimpleProjection = false;
 	pEnt->m_nShadowQuality = 1;
 	pEnt->m_flLightFOV = 10.0f;
 	pEnt->m_LightColor.r = 255;
@@ -70,8 +65,6 @@ C_EnvProjectedTexture *C_EnvProjectedTexture::Create( )
 	pEnt->SetAbsAngles( QAngle( 90, 0, 0 ) );
 	pEnt->m_bAlwaysUpdate = true;
 	pEnt->m_bState = true;
-	pEnt->m_flProjectionSize = 500.0f;
-	pEnt->m_flRotation = 0.0f;
 
 	return pEnt;
 }
@@ -80,8 +73,6 @@ C_EnvProjectedTexture::C_EnvProjectedTexture( void )
 {
 	m_LightHandle = CLIENTSHADOW_INVALID_HANDLE;
 	m_bForceUpdate = true;
-	m_pMaterial = NULL;
-	/*AddToEntityList( ENTITY_LIST_SIMULATE );*/
 }
 
 C_EnvProjectedTexture::~C_EnvProjectedTexture( void )
@@ -94,22 +85,9 @@ void C_EnvProjectedTexture::ShutDownLightHandle( void )
 	// Clear out the light
 	if( m_LightHandle != CLIENTSHADOW_INVALID_HANDLE )
 	{
-		if ( m_bSimpleProjection == true )
-		{
-			g_pClientShadowMgr->DestroyProjection( m_LightHandle );
-		}
-		else
-		{
-			g_pClientShadowMgr->DestroyFlashlight( m_LightHandle );
-		}
+		g_pClientShadowMgr->DestroyFlashlight( m_LightHandle );
 		m_LightHandle = CLIENTSHADOW_INVALID_HANDLE;
 	}
-}
-
-
-void C_EnvProjectedTexture::SetMaterial( IMaterial *pMaterial )
-{
-	m_pMaterial = pMaterial;
 }
 
 
@@ -119,22 +97,6 @@ void C_EnvProjectedTexture::SetLightColor( byte r, byte g, byte b, byte a )
 	m_LightColor.g = g;
 	m_LightColor.b = b;
 	m_LightColor.a = a;
-}
-
-
-void C_EnvProjectedTexture::SetSize( float flSize )
-{
-	m_flProjectionSize = flSize;
-}
-
-// add to rotation
-void C_EnvProjectedTexture::SetRotation( float flRotation )
-{
-	if ( m_flRotation != flRotation )
-	{
-		m_flRotation = flRotation;
-//		m_bForceUpdate = true;
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -260,81 +222,78 @@ void C_EnvProjectedTexture::UpdateLight( void )
 
 		// quickly check the proposed light's bbox against the view frustum to determine whether we
 		// should bother to create it, if it doesn't exist, or cull it, if it does.
-		if ( m_bSimpleProjection == false )
-		{
 #pragma message("OPTIMIZATION: this should be made SIMD")
-			// get the half-widths of the near and far planes, 
-			// based on the FOV which is in degrees. Remember that
-			// on planet Valve, x is forward, y left, and z up. 
-			const float tanHalfAngle = tan( m_flLightFOV * ( M_PI/180.0f ) * 0.5f );
-			const float halfWidthNear = tanHalfAngle * m_flNearZ;
-			const float halfWidthFar = tanHalfAngle * m_flFarZ;
-			// now we can build coordinates in local space: the near rectangle is eg 
-			// (0, -halfWidthNear, -halfWidthNear), (0,  halfWidthNear, -halfWidthNear), 
-			// (0,  halfWidthNear,  halfWidthNear), (0, -halfWidthNear,  halfWidthNear)
+		// get the half-widths of the near and far planes, 
+		// based on the FOV which is in degrees. Remember that
+		// on planet Valve, x is forward, y left, and z up. 
+		const float tanHalfAngle = tan( m_flLightFOV * ( M_PI/180.0f ) * 0.5f );
+		const float halfWidthNear = tanHalfAngle * m_flNearZ;
+		const float halfWidthFar = tanHalfAngle * m_flFarZ;
+		// now we can build coordinates in local space: the near rectangle is eg 
+		// (0, -halfWidthNear, -halfWidthNear), (0,  halfWidthNear, -halfWidthNear), 
+		// (0,  halfWidthNear,  halfWidthNear), (0, -halfWidthNear,  halfWidthNear)
 
-			VectorAligned vNearRect[4] = { 
-				VectorAligned( m_flNearZ, -halfWidthNear, -halfWidthNear), VectorAligned( m_flNearZ,  halfWidthNear, -halfWidthNear),
-				VectorAligned( m_flNearZ,  halfWidthNear,  halfWidthNear), VectorAligned( m_flNearZ, -halfWidthNear,  halfWidthNear) 
-			};
+		VectorAligned vNearRect[4] = { 
+			VectorAligned( m_flNearZ, -halfWidthNear, -halfWidthNear), VectorAligned( m_flNearZ,  halfWidthNear, -halfWidthNear),
+			VectorAligned( m_flNearZ,  halfWidthNear,  halfWidthNear), VectorAligned( m_flNearZ, -halfWidthNear,  halfWidthNear) 
+		};
 
-			VectorAligned vFarRect[4] = { 
-				VectorAligned( m_flFarZ, -halfWidthFar, -halfWidthFar), VectorAligned( m_flFarZ,  halfWidthFar, -halfWidthFar),
-				VectorAligned( m_flFarZ,  halfWidthFar,  halfWidthFar), VectorAligned( m_flFarZ, -halfWidthFar,  halfWidthFar) 
-			};
+		VectorAligned vFarRect[4] = { 
+			VectorAligned( m_flFarZ, -halfWidthFar, -halfWidthFar), VectorAligned( m_flFarZ,  halfWidthFar, -halfWidthFar),
+			VectorAligned( m_flFarZ,  halfWidthFar,  halfWidthFar), VectorAligned( m_flFarZ, -halfWidthFar,  halfWidthFar) 
+		};
 
-			matrix3x4_t matOrientation( vForward, -vRight, vUp, vPos );
+		matrix3x4_t matOrientation( vForward, -vRight, vUp, vPos );
 
-			enum
-			{
-				kNEAR = 0,
-				kFAR = 1,
-			};
-			VectorAligned vOutRects[2][4];
+		enum
+		{
+			kNEAR = 0,
+			kFAR = 1,
+		};
+		VectorAligned vOutRects[2][4];
 
-			for ( int i = 0 ; i < 4 ; ++i )
-			{
-				VectorTransform( vNearRect[i].Base(), matOrientation, vOutRects[0][i].Base() );
-			}
-			for ( int i = 0 ; i < 4 ; ++i )
-			{
-				VectorTransform( vFarRect[i].Base(), matOrientation, vOutRects[1][i].Base() );
-			}
+		for ( int i = 0 ; i < 4 ; ++i )
+		{
+			VectorTransform( vNearRect[i].Base(), matOrientation, vOutRects[0][i].Base() );
+		}
+		for ( int i = 0 ; i < 4 ; ++i )
+		{
+			VectorTransform( vFarRect[i].Base(), matOrientation, vOutRects[1][i].Base() );
+		}
 
-			// now take the min and max extents for the bbox, and see if it is visible.
-			Vector mins = **vOutRects; 
-			Vector maxs = **vOutRects; 
-			for ( int i = 1; i < 8 ; ++i )
-			{
-				VectorMin( mins, *(*vOutRects+i), mins );
-				VectorMax( maxs, *(*vOutRects+i), maxs );
-			}
+		// now take the min and max extents for the bbox, and see if it is visible.
+		Vector mins = **vOutRects; 
+		Vector maxs = **vOutRects; 
+		for ( int i = 1; i < 8 ; ++i )
+		{
+			VectorMin( mins, *(*vOutRects+i), mins );
+			VectorMax( maxs, *(*vOutRects+i), maxs );
+		}
 
 #if 0 //for debugging the visibility frustum we just calculated
-			NDebugOverlay::Triangle( vOutRects[0][0], vOutRects[0][1], vOutRects[0][2], 255, 0, 0, 100, true, 0.0f ); //first tri
-			NDebugOverlay::Triangle( vOutRects[0][2], vOutRects[0][1], vOutRects[0][0], 255, 0, 0, 100, true, 0.0f ); //make it double sided
-			NDebugOverlay::Triangle( vOutRects[0][2], vOutRects[0][3], vOutRects[0][0], 255, 0, 0, 100, true, 0.0f ); //second tri
-			NDebugOverlay::Triangle( vOutRects[0][0], vOutRects[0][3], vOutRects[0][2], 255, 0, 0, 100, true, 0.0f ); //make it double sided
+		NDebugOverlay::Triangle( vOutRects[0][0], vOutRects[0][1], vOutRects[0][2], 255, 0, 0, 100, true, 0.0f ); //first tri
+		NDebugOverlay::Triangle( vOutRects[0][2], vOutRects[0][1], vOutRects[0][0], 255, 0, 0, 100, true, 0.0f ); //make it double sided
+		NDebugOverlay::Triangle( vOutRects[0][2], vOutRects[0][3], vOutRects[0][0], 255, 0, 0, 100, true, 0.0f ); //second tri
+		NDebugOverlay::Triangle( vOutRects[0][0], vOutRects[0][3], vOutRects[0][2], 255, 0, 0, 100, true, 0.0f ); //make it double sided
 
-			NDebugOverlay::Triangle( vOutRects[1][0], vOutRects[1][1], vOutRects[1][2], 0, 0, 255, 100, true, 0.0f ); //first tri
-			NDebugOverlay::Triangle( vOutRects[1][2], vOutRects[1][1], vOutRects[1][0], 0, 0, 255, 100, true, 0.0f ); //make it double sided
-			NDebugOverlay::Triangle( vOutRects[1][2], vOutRects[1][3], vOutRects[1][0], 0, 0, 255, 100, true, 0.0f ); //second tri
-			NDebugOverlay::Triangle( vOutRects[1][0], vOutRects[1][3], vOutRects[1][2], 0, 0, 255, 100, true, 0.0f ); //make it double sided
+		NDebugOverlay::Triangle( vOutRects[1][0], vOutRects[1][1], vOutRects[1][2], 0, 0, 255, 100, true, 0.0f ); //first tri
+		NDebugOverlay::Triangle( vOutRects[1][2], vOutRects[1][1], vOutRects[1][0], 0, 0, 255, 100, true, 0.0f ); //make it double sided
+		NDebugOverlay::Triangle( vOutRects[1][2], vOutRects[1][3], vOutRects[1][0], 0, 0, 255, 100, true, 0.0f ); //second tri
+		NDebugOverlay::Triangle( vOutRects[1][0], vOutRects[1][3], vOutRects[1][2], 0, 0, 255, 100, true, 0.0f ); //make it double sided
 
-			NDebugOverlay::Box( vec3_origin, mins, maxs, 0, 255, 0, 100, 0.0f );
+		NDebugOverlay::Box( vec3_origin, mins, maxs, 0, 255, 0, 100, 0.0f );
 #endif
 			
-			bool bVisible = IsBBoxVisible( mins, maxs );
-			if (!bVisible)
+		bool bVisible = IsBBoxVisible( mins, maxs );
+		if (!bVisible)
+		{
+			// Spotlight's extents aren't in view
+			if ( m_LightHandle != CLIENTSHADOW_INVALID_HANDLE )
 			{
-				// Spotlight's extents aren't in view
-				if ( m_LightHandle != CLIENTSHADOW_INVALID_HANDLE )
-				{
-					ShutDownLightHandle();
-				}
-
-				return;
+				ShutDownLightHandle();
 			}
+
+			return;
 		}
 
 		float flAlpha = m_flCurrentLinearFloatLightAlpha * ( 1.0f / 255.0f );
@@ -352,36 +311,13 @@ void C_EnvProjectedTexture::UpdateLight( void )
 		state.m_flShadowDepthBias = g_pMaterialSystemHardwareConfig->GetShadowDepthBias();*/
 		state.m_bEnableShadows = m_bEnableShadows;
 		state.m_pSpotlightTexture = m_SpotlightTexture;
-		state.m_pProjectedMaterial = NULL; // only complain if we're using material projection
 		state.m_nSpotlightTextureFrame = m_nSpotlightTextureFrame;
-		state.m_flProjectionSize = m_flProjectionSize;
-		state.m_flProjectionRotation = m_flRotation;
 
 		state.m_nShadowQuality = m_nShadowQuality; // Allow entity to affect shadow quality
 
-		if ( m_bSimpleProjection == true )
-		{
-			state.m_bSimpleProjection = true;
-			state.m_bOrtho = true;
-			state.m_fOrthoLeft = -m_flProjectionSize;
-			state.m_fOrthoTop = -m_flProjectionSize;
-			state.m_fOrthoRight = m_flProjectionSize;
-			state.m_fOrthoBottom = m_flProjectionSize;
-		}
-
 		if( m_LightHandle == CLIENTSHADOW_INVALID_HANDLE )
 		{
-			//// Hack: env projected textures don't work like normal flashlights; they're not assigned to a given splitscreen slot,
-			//// but the flashlight code requires this
-			//HACK_GETLOCALPLAYER_GUARD( "Env projected texture" );
-			if ( m_bSimpleProjection == true )
-			{
-				m_LightHandle = g_pClientShadowMgr->CreateProjection( state );
-			}
-			else
-			{
-				m_LightHandle = g_pClientShadowMgr->CreateFlashlight( state );
-			}
+			m_LightHandle = g_pClientShadowMgr->CreateFlashlight( state );
 
 			if ( m_LightHandle != CLIENTSHADOW_INVALID_HANDLE )
 			{
@@ -390,14 +326,7 @@ void C_EnvProjectedTexture::UpdateLight( void )
 		}
 		else
 		{
-			if ( m_bSimpleProjection == true )
-			{
-				g_pClientShadowMgr->UpdateProjectionState( m_LightHandle, state );
-			}
-			else
-			{
-				g_pClientShadowMgr->UpdateFlashlightState( m_LightHandle, state );
-			}
+			g_pClientShadowMgr->UpdateFlashlightState( m_LightHandle, state );
 			m_bForceUpdate = false;
 		}
 
@@ -423,14 +352,6 @@ void C_EnvProjectedTexture::UpdateLight( void )
 		g_pClientShadowMgr->UpdateProjectedTexture( m_LightHandle, true );
 	}
 }
-
-//bool C_EnvProjectedTexture::Simulate( void )
-//{
-//	UpdateLight();
-//
-//	BaseClass::Simulate();
-//	return true;
-//}
 
 void C_EnvProjectedTexture::Simulate( void )
 {

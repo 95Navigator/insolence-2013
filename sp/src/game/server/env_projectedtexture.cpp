@@ -16,10 +16,8 @@ LINK_ENTITY_TO_CLASS( env_projectedtexture, CEnvProjectedTexture );
 BEGIN_DATADESC( CEnvProjectedTexture )
 	DEFINE_FIELD( m_hTargetEntity, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_bState, FIELD_BOOLEAN ),
-	DEFINE_FIELD( m_bSimpleProjection, FIELD_BOOLEAN ),
 	DEFINE_KEYFIELD( m_flLightFOV, FIELD_FLOAT, "lightfov" ),
 	DEFINE_KEYFIELD( m_bEnableShadows, FIELD_BOOLEAN, "enableshadows" ),
-	DEFINE_KEYFIELD( m_bSimpleProjection, FIELD_BOOLEAN, "simpleprojection" ),
 	DEFINE_KEYFIELD( m_bLightOnlyTarget, FIELD_BOOLEAN, "lightonlytarget" ),
 	DEFINE_KEYFIELD( m_bLightWorld, FIELD_BOOLEAN, "lightworld" ),
 	DEFINE_KEYFIELD( m_bCameraSpace, FIELD_BOOLEAN, "cameraspace" ),
@@ -32,8 +30,6 @@ BEGIN_DATADESC( CEnvProjectedTexture )
 	DEFINE_KEYFIELD( m_flBrightnessScale, FIELD_FLOAT, "brightnessscale" ),
 	DEFINE_FIELD( m_LightColor, FIELD_COLOR32 ), 
 	DEFINE_KEYFIELD( m_flColorTransitionTime, FIELD_FLOAT, "colortransitiontime" ),
-	DEFINE_KEYFIELD( m_flProjectionSize, FIELD_FLOAT, "projection_size" ),
-	DEFINE_KEYFIELD( m_flRotation, FIELD_FLOAT, "projection_rotation" ),
 
 	DEFINE_INPUTFUNC( FIELD_VOID, "TurnOn", InputTurnOn ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "TurnOff", InputTurnOff ),
@@ -57,12 +53,10 @@ IMPLEMENT_SERVERCLASS_ST( CEnvProjectedTexture, DT_EnvProjectedTexture )
 	SendPropBool( SENDINFO( m_bAlwaysUpdate ) ),
 	SendPropFloat( SENDINFO( m_flLightFOV ) ),
 	SendPropBool( SENDINFO( m_bEnableShadows ) ),
-	SendPropBool( SENDINFO( m_bSimpleProjection ) ),
 	SendPropBool( SENDINFO( m_bLightOnlyTarget ) ),
 	SendPropBool( SENDINFO( m_bLightWorld ) ),
 	SendPropBool( SENDINFO( m_bCameraSpace ) ),
 	SendPropFloat( SENDINFO( m_flBrightnessScale ) ),
-	/*SendPropInt( SENDINFO ( m_LightColor ),	32, SPROP_UNSIGNED, SendProxy_Color32ToInt32 ),*/
 	SendPropInt( SENDINFO ( m_LightColor ),	32, SPROP_UNSIGNED, SendProxy_Color32ToInt ),
 	SendPropFloat( SENDINFO( m_flColorTransitionTime ) ),
 	SendPropFloat( SENDINFO( m_flAmbient ) ),
@@ -71,8 +65,6 @@ IMPLEMENT_SERVERCLASS_ST( CEnvProjectedTexture, DT_EnvProjectedTexture )
 	SendPropFloat( SENDINFO( m_flNearZ ), 16, SPROP_ROUNDDOWN, 0.0f,  500.0f ),
 	SendPropFloat( SENDINFO( m_flFarZ ),  18, SPROP_ROUNDDOWN, 0.0f, 1500.0f ),
 	SendPropInt( SENDINFO( m_nShadowQuality ), 1, SPROP_UNSIGNED ),  // Just one bit for now
-	SendPropFloat( SENDINFO( m_flProjectionSize ) ),
-	SendPropFloat( SENDINFO( m_flRotation ) ),
 END_SEND_TABLE()
 
 //-----------------------------------------------------------------------------
@@ -84,7 +76,6 @@ CEnvProjectedTexture::CEnvProjectedTexture( void )
 	m_bAlwaysUpdate = false;
 	m_flLightFOV = 45.0f;
 	m_bEnableShadows = false;
-	m_bSimpleProjection = false;
 	m_bLightOnlyTarget = false;
 	m_bLightWorld = true;
 	m_bCameraSpace = false;
@@ -100,8 +91,6 @@ CEnvProjectedTexture::CEnvProjectedTexture( void )
 	m_flNearZ = 4.0f;
 	m_flFarZ = 750.0f;
 	m_nShadowQuality = 0;
-	m_flProjectionSize = 500.0f;
-	m_flRotation = 0.0f;
 }
 
 void UTIL_ColorStringToLinearFloatColor( Vector &color, const char *pString )
