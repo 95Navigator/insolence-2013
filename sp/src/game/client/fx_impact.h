@@ -27,6 +27,9 @@ enum
 	IMPACT_REPORT_RAGDOLL_IMPACTS = 0x2,
 };
 
+// Create a leak effect if the material specifies one
+void LeakEffect( trace_t &tr );
+
 bool Impact( Vector &vecOrigin, Vector &vecStart, int iMaterial, int iDamageType, int iHitbox, C_BaseEntity *pEntity, trace_t &tr, int nFlags = 0, int maxLODToDecal = ADDDECAL_TO_ALL_LODS );
 
 // Flags for PerformCustomEffects

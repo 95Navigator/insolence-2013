@@ -10,12 +10,8 @@
 #include "engine/IEngineSound.h"
 #include "npcevent.h"
 #include "in_buttons.h"
-#include "antlion_maker.h"
-#include "grenade_bugbait.h"
-#include "gamestats.h"
 
-// memdbgon must be the last include file in a .cpp file!!!
-#include "tier0/memdbgon.h"
+#include "grenade_bugbait.h"
 
 //
 // Bug Bait Weapon
@@ -28,61 +24,52 @@ public:
 
 	DECLARE_SERVERCLASS();
 
-	CWeaponBugBait( void );
-
-	void	Spawn( void );
-	void	FallInit( void );
-
+			CWeaponBugBait( void );
 	int		CapabilitiesGet( void ) { return bits_CAP_WEAPON_RANGE_ATTACK1; }
 	
 	void	Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
 
-	void	Drop( const Vector &vecVelocity );
-	void	BugbaitStickyTouch( CBaseEntity *pOther );
-	void	OnPickedUp( CBaseCombatCharacter *pNewOwner );
 	bool	Deploy( void );
 	bool	Holster( CBaseCombatWeapon *pSwitchingTo );
 
 	void	ItemPostFrame( void );
 	void	Precache( void );
 	void	PrimaryAttack( void );
-	void	SecondaryAttack( void );
+	void	SecondaryAttack( void ) {}
 	void	ThrowGrenade( CBasePlayer *pPlayer );
 	
 	bool	HasAnyAmmo( void ) { return true; }
 	
 	bool	Reload( void );
+	void	SetPickupTouch( void );
+	void	Drop( const Vector &vecVelocity );
 
 	void	SetSporeEmitterState( bool state = true );
 
-	bool	ShouldDisplayHUDHint() { return true; }
+	void	BaitTouch( CBaseEntity *pOther );
 
 	DECLARE_DATADESC();
 
 protected:
 
-	bool		m_bDrawBackFinished;
 	bool		m_bRedraw;
 	bool		m_bEmitSpores;
-	EHANDLE		m_hSporeTrail;
+	SporeTrail	*m_pSporeTrail;
 };
 
 IMPLEMENT_SERVERCLASS_ST(CWeaponBugBait, DT_WeaponBugBait)
 END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( weapon_bugbait, CWeaponBugBait );
-#ifndef HL2MP
 PRECACHE_WEAPON_REGISTER( weapon_bugbait );
-#endif
 
 BEGIN_DATADESC( CWeaponBugBait )
 
-	DEFINE_FIELD( m_hSporeTrail,		FIELD_EHANDLE ),
-	DEFINE_FIELD( m_bRedraw,			FIELD_BOOLEAN ),
-	DEFINE_FIELD( m_bEmitSpores,		FIELD_BOOLEAN ),
-	DEFINE_FIELD( m_bDrawBackFinished,	FIELD_BOOLEAN ),
+	DEFINE_FIELD( m_pSporeTrail,	FIELD_CLASSPTR ),
+	DEFINE_FIELD( m_bRedraw,		FIELD_BOOLEAN ),
+	DEFINE_FIELD( m_bEmitSpores,	FIELD_BOOLEAN ),
 
-	DEFINE_FUNCTION( BugbaitStickyTouch ),
+DEFINE_FUNCTION( BaitTouch ),
 
 END_DATADESC()
 
@@ -91,43 +78,8 @@ END_DATADESC()
 //-----------------------------------------------------------------------------
 CWeaponBugBait::CWeaponBugBait( void )
 {
-	m_bDrawBackFinished	= false;
-	m_bRedraw			= false;
-	m_hSporeTrail		= NULL;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponBugBait::Spawn( void )
-{
-	BaseClass::Spawn();
-
-	// Increase the bugbait's pickup volume. It spawns inside the antlion guard's body,
-	// and playtesters seem to be wary about moving into the body.
-	SetSize( Vector( -4, -4, -4), Vector(4, 4, 4) );
-	CollisionProp()->UseTriggerBounds( true, 100 );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponBugBait::FallInit( void )
-{
-	// Bugbait shouldn't be physics, because it musn't roll/move away from it's spawnpoint.
-	// The game will break if the player can't pick it up, so it must stay still.
-	SetModel( GetWorldModel() );
-
-	VPhysicsDestroyObject();
-	SetMoveType( MOVETYPE_FLYGRAVITY );
-	SetSolid( SOLID_BBOX );
-	AddSolidFlags( FSOLID_TRIGGER );
-
-	SetPickupTouch();
-	
-	SetThink( &CBaseCombatWeapon::FallThink );
-
-	SetNextThink( gpGlobals->curtime + 0.1f );
+	m_bRedraw		= false;
+	m_pSporeTrail	= NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -138,72 +90,6 @@ void CWeaponBugBait::Precache( void )
 	BaseClass::Precache();
 
 	UTIL_PrecacheOther( "npc_grenade_bugbait" );
-
-	PrecacheScriptSound( "Weapon_Bugbait.Splat" );
-
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponBugBait::Drop( const Vector &vecVelocity )
-{
-	BaseClass::Drop( vecVelocity );
-
-	// On touch, stick & stop moving. Increase our thinktime a bit so we don't stomp the touch for a bit
-	SetNextThink( gpGlobals->curtime + 3.0 );
-	SetTouch( &CWeaponBugBait::BugbaitStickyTouch );
-
-	m_hSporeTrail = SporeExplosion::CreateSporeExplosion();
-	if ( m_hSporeTrail )
-	{
-		SporeExplosion *pSporeExplosion = (SporeExplosion *)m_hSporeTrail.Get();
-
-		QAngle	angles;
-		VectorAngles( Vector(0,0,1), angles );
-
-		pSporeExplosion->SetAbsAngles( angles );
-		pSporeExplosion->SetAbsOrigin( GetAbsOrigin() );
-		pSporeExplosion->SetParent( this );
-
-		pSporeExplosion->m_flSpawnRate			= 16.0f;
-		pSporeExplosion->m_flParticleLifetime	= 0.5f;
-		pSporeExplosion->SetRenderColor( 0.0f, 0.5f, 0.25f, 0.15f );
-
-		pSporeExplosion->m_flStartSize			= 32;
-		pSporeExplosion->m_flEndSize			= 48;
-		pSporeExplosion->m_flSpawnRadius		= 4;
-
-		pSporeExplosion->SetLifetime( 9999 );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Stick to the world when we touch it
-//-----------------------------------------------------------------------------
-void CWeaponBugBait::BugbaitStickyTouch( CBaseEntity *pOther )
-{
-	if ( !pOther->IsWorld() )
-		return;
-
-	// Stop moving, wait for pickup
-	SetMoveType( MOVETYPE_NONE );
-	SetThink( NULL );
-	SetPickupTouch();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : *pPicker - 
-//-----------------------------------------------------------------------------
-void CWeaponBugBait::OnPickedUp( CBaseCombatCharacter *pNewOwner )
-{
-	BaseClass::OnPickedUp( pNewOwner );
-
-	if ( m_hSporeTrail )
-	{
-		UTIL_Remove( m_hSporeTrail );
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -219,44 +105,15 @@ void CWeaponBugBait::PrimaryAttack( void )
 	if ( pOwner == NULL )
 		return;
 
+	// BUGBUG: Animation events don't work on the player right now!!!
+	// Only the player fires this way so we can cast
 	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
-	
-	if ( pPlayer == NULL )
+	if ( !pPlayer )
 		return;
 
-	SendWeaponAnim( ACT_VM_HAULBACK );
+	SendWeaponAnim( ACT_VM_THROW );
 	
-	m_flTimeWeaponIdle		= FLT_MAX;
-	m_flNextPrimaryAttack	= FLT_MAX;
-
-	m_iPrimaryAttacks++;
-	gamestats->Event_WeaponFired( pPlayer, true, GetClassname() );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CWeaponBugBait::SecondaryAttack( void )
-{
-	// Squeeze!
-	CPASAttenuationFilter filter( this );
-
-	EmitSound( filter, entindex(), "Weapon_Bugbait.Splat" );
-
-	if ( CGrenadeBugBait::ActivateBugbaitTargets( GetOwner(), GetAbsOrigin(), true ) == false )
-	{
-		g_AntlionMakerManager.BroadcastFollowGoal( GetOwner() );
-	}
-
-	SendWeaponAnim( ACT_VM_SECONDARYATTACK );
-	m_flNextSecondaryAttack = gpGlobals->curtime + SequenceDuration();
-
-	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
-	if ( pOwner )
-	{
-		m_iSecondaryAttacks++;
-		gamestats->Event_WeaponFired( pOwner, false, GetClassname() );
-	}
+	m_flNextPrimaryAttack	= gpGlobals->curtime + SequenceDuration();
 }
 
 //-----------------------------------------------------------------------------
@@ -274,24 +131,62 @@ void CWeaponBugBait::ThrowGrenade( CBasePlayer *pPlayer )
 	vThrowPos += vForward * 18.0f;
 	vThrowPos += vRight * 12.0f;
 
-	pPlayer->GetVelocity( &vThrowVel, NULL );
-	vThrowVel += vForward * 1000;
+	vThrowVel = vForward * 1000 + pPlayer->GetAbsVelocity();
 
-	CGrenadeBugBait *pGrenade = BugBaitGrenade_Create( vThrowPos, vec3_angle, vThrowVel, QAngle(600,random->RandomInt(-1200,1200),0), pPlayer );
-
-	if ( pGrenade != NULL )
-	{
-		// If the shot is clear to the player, give the missile a grace period
-		trace_t	tr;
-		UTIL_TraceLine( pPlayer->EyePosition(), pPlayer->EyePosition() + ( vForward * 128 ), MASK_SHOT, this, COLLISION_GROUP_NONE, &tr );
-		
-		if ( tr.fraction == 1.0 )
-		{
-			pGrenade->SetGracePeriod( 0.1f );
-		}
-	}
+	BugBaitGrenade_Create( vThrowPos, vec3_angle, vThrowVel, QAngle(600,random->RandomInt(-1200,1200),0), pPlayer );
 
 	m_bRedraw = true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CWeaponBugBait::Drop( const Vector &vecVelocity )
+{
+	BaseClass::Drop( vecVelocity );
+
+	SetSolid( SOLID_BBOX );
+	AddSolidFlags( FSOLID_TRIGGER );
+
+	Vector	offsetPos;
+
+	offsetPos.Random( -16.0f, 16.0f );
+	offsetPos.z = 0;
+
+	UTIL_SetOrigin( this, GetAbsOrigin() + offsetPos );
+
+	Vector vecNewVelocity;
+	vecNewVelocity.Random( -1.0f, 1.0f );
+
+	vecNewVelocity[2] = random->RandomFloat( 0.75f, 1.0f );
+	vecNewVelocity	*= random->RandomInt( 50, 250 );
+
+	SetAbsVelocity( vecNewVelocity );
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : *pOther - 
+//-----------------------------------------------------------------------------
+void CWeaponBugBait::BaitTouch( CBaseEntity *pOther )
+{
+	if ( pOther->IsPlayer() == false )
+		return;
+
+	CBasePlayer *pPlayer = (CBasePlayer *) pOther;
+
+	//Always equip
+	pPlayer->Weapon_Equip( this );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : *pOwner - 
+//-----------------------------------------------------------------------------
+void CWeaponBugBait::SetPickupTouch( void )
+{
+	SetTouch( &CWeaponBugBait::BaitTouch );
 }
 
 //-----------------------------------------------------------------------------
@@ -304,10 +199,6 @@ void CWeaponBugBait::Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatC
 	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
 	switch( pEvent->event )
 	{
-		case EVENT_WEAPON_SEQUENCE_FINISHED:
-			m_bDrawBackFinished = true;
-			break;
-
 		case EVENT_WEAPON_THROW:
 			ThrowGrenade( pOwner );
 			break;
@@ -330,7 +221,7 @@ bool CWeaponBugBait::Reload( void )
 		SendWeaponAnim( ACT_VM_DRAW );
 
 		//Update our times
-		m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
+		m_flNextPrimaryAttack	= gpGlobals->curtime + SequenceDuration();
 
 		//Mark this as done
 		m_bRedraw = false;
@@ -349,35 +240,15 @@ void CWeaponBugBait::ItemPostFrame( void )
 	if ( pOwner == NULL )
 		return;
 
-	// See if we're cocked and ready to throw
-	if ( m_bDrawBackFinished )
+	//See if we're attacking
+	if ( ( pOwner->m_nButtons & IN_ATTACK ) && ( m_flNextPrimaryAttack < gpGlobals->curtime ) )
 	{
-		if ( ( pOwner->m_nButtons & IN_ATTACK ) == false )
-		{
-			SendWeaponAnim( ACT_VM_THROW );
-			m_flNextPrimaryAttack  = gpGlobals->curtime + SequenceDuration();
-			m_bDrawBackFinished = false;
-		}
-	}
-	else
-	{
-		//See if we're attacking
-		if ( ( pOwner->m_nButtons & IN_ATTACK ) && ( m_flNextPrimaryAttack < gpGlobals->curtime ) )
-		{
-			PrimaryAttack();
-		}
-		else if ( ( pOwner->m_nButtons & IN_ATTACK2 ) && ( m_flNextSecondaryAttack < gpGlobals->curtime ) )
-		{
-			SecondaryAttack();
-		}
+		PrimaryAttack();
 	}
 
 	if ( m_bRedraw )
 	{
-		if ( IsViewModelSequenceFinished() )
-		{
-			Reload();
-		}
+		Reload();
 	}
 
 	WeaponIdle();
@@ -394,30 +265,29 @@ bool CWeaponBugBait::Deploy( void )
 		return false;
 
 	/*
-	if ( m_hSporeTrail == NULL )
+	if ( m_pSporeTrail == NULL )
 	{
-		m_hSporeTrail = SporeTrail::CreateSporeTrail();
+		m_pSporeTrail = SporeTrail::CreateSporeTrail();
 		
-		m_hSporeTrail->m_bEmit				= true;
-		m_hSporeTrail->m_flSpawnRate		= 100.0f;
-		m_hSporeTrail->m_flParticleLifetime	= 2.0f;
-		m_hSporeTrail->m_flStartSize		= 1.0f;
-		m_hSporeTrail->m_flEndSize			= 4.0f;
-		m_hSporeTrail->m_flSpawnRadius		= 8.0f;
+		m_pSporeTrail->m_bEmit				= true;
+		m_pSporeTrail->m_flSpawnRate		= 100.0f;
+		m_pSporeTrail->m_flParticleLifetime	= 2.0f;
+		m_pSporeTrail->m_flStartSize		= 1.0f;
+		m_pSporeTrail->m_flEndSize			= 4.0f;
+		m_pSporeTrail->m_flSpawnRadius		= 8.0f;
 
-		m_hSporeTrail->m_vecEndColor		= Vector( 0, 0, 0 );
+		m_pSporeTrail->m_vecEndColor		= Vector( 0, 0, 0 );
 
 		CBaseViewModel *vm = pOwner->GetViewModel();
 		
 		if ( vm != NULL )
 		{
-			m_hSporeTrail->FollowEntity( vm );
+			m_pSporeTrail->FollowEntity( vm->entindex() );
 		}
 	}
 	*/
 
 	m_bRedraw = false;
-	m_bDrawBackFinished = false;
 
 	return BaseClass::Deploy();
 }
@@ -428,7 +298,6 @@ bool CWeaponBugBait::Deploy( void )
 bool CWeaponBugBait::Holster( CBaseCombatWeapon *pSwitchingTo )
 {
 	m_bRedraw = false;
-	m_bDrawBackFinished = false;
 
 	return BaseClass::Holster( pSwitchingTo );
 }

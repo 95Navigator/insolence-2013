@@ -186,32 +186,26 @@ private:
 	bool					FreeLowPriorityTempEnt();
 
 	int						AddVisibleTempEntity( C_LocalTempEntity *pEntity );
-
-	// AR2
-	void					MuzzleFlash_AR2_Player( const Vector &origin, const QAngle &angles, ClientEntityHandle_t hEntity );
-	void					MuzzleFlash_AR2_NPC( const Vector &origin, const QAngle &angles, ClientEntityHandle_t hEntity );
-							
-	// SMG1					
-	void					MuzzleFlash_SMG1_Player( ClientEntityHandle_t hEntity, int attachmentIndex );
-	void					MuzzleFlash_SMG1_NPC( ClientEntityHandle_t hEntity, int attachmentIndex );
-							
-	// Shotgun				
-	void					MuzzleFlash_Shotgun_Player( ClientEntityHandle_t hEntity, int attachmentIndex );
-	void					MuzzleFlash_Shotgun_NPC( ClientEntityHandle_t hEntity, int attachmentIndex );
-							
-	// Pistol				
-	void					MuzzleFlash_Pistol_Player( ClientEntityHandle_t hEntity, int attachmentIndex );
-	void					MuzzleFlash_Pistol_NPC( ClientEntityHandle_t hEntity, int attachmentIndex );
-							
+				
 	// Combine				
 	void					MuzzleFlash_Combine_Player( ClientEntityHandle_t hEntity, int attachmentIndex );
 	void					MuzzleFlash_Combine_NPC( ClientEntityHandle_t hEntity, int attachmentIndex );
 
-	// 357
-	void					MuzzleFlash_357_Player( ClientEntityHandle_t hEntity, int attachmentIndex );
+	//AR2
+	virtual	void			MuzzleFlash_AR2_Player( const Vector &origin, const QAngle &angles, ClientEntityHandle_t hEntity );
+	virtual	void			MuzzleFlash_AR2_NPC( const Vector &origin, const QAngle &angles, ClientEntityHandle_t hEntity );
+	
+	//SMG1
+	virtual void			MuzzleFlash_SMG1_Player( const Vector &origin, const QAngle &angles, ClientEntityHandle_t hEntity );
+	virtual void			MuzzleFlash_SMG1_NPC( const Vector &origin, const QAngle &angles, ClientEntityHandle_t hEntity );
 
-	// RPG
-	void					MuzzleFlash_RPG_NPC( ClientEntityHandle_t hEntity, int attachmentIndex );
+	//Shotgun
+	virtual void			MuzzleFlash_Shotgun_Player( const Vector& origin, const QAngle &angles, ClientEntityHandle_t hEntity );
+	virtual void			MuzzleFlash_Shotgun_NPC( const Vector& origin, const QAngle &angles, ClientEntityHandle_t hEntity );
+
+	//Pistol
+	virtual	void			MuzzleFlash_Pistol_Player( const Vector& origin, const QAngle &angles, ClientEntityHandle_t hEntity );
+	virtual	void			MuzzleFlash_Pistol_NPC( const Vector& origin, const QAngle &angles, ClientEntityHandle_t hEntity );
 };
 
 
