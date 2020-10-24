@@ -267,7 +267,6 @@ $Project "Server (Insolence)"
 		
 		$Folder	"Insolence DLL"
 		{
-			$File	"insolence\env_global_light.cpp"
 			$File	"hl2\grenade_molotov.h"
 			$File	"hl2\grenade_molotov.cpp"
 			$File	"hl2\grenade_satchel.h"
