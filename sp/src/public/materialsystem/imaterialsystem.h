@@ -434,16 +434,6 @@ struct FlashlightState_t
 		m_nRight = -1;
 		m_nBottom = -1;
 		m_nShadowQuality = 0;
-
-		m_bOrtho = false;
-		m_fOrthoLeft = -1.0f;
-		m_fOrthoRight = 1.0f;
-		m_fOrthoTop = -1.0f;
-		m_fOrthoBottom = 1.0f;
-
-		m_fBrightnessScale = 1.0f;
-		m_pSpotlightTexture = NULL;
-		m_bGlobalLight = false;
 	}
 
 	Vector m_vecLightOrigin;
@@ -469,16 +459,6 @@ struct FlashlightState_t
 	float m_flShadowJitterSeed;
 	float m_flShadowAtten;
 	int   m_nShadowQuality;
-
-	bool  m_bOrtho;
-	float m_fOrthoLeft;
-	float m_fOrthoRight;
-	float m_fOrthoTop;
-	float m_fOrthoBottom;
-
-	float m_FarZAtten;
-	float m_fBrightnessScale;
-	bool m_bGlobalLight;
 
 	// Getters for scissor members
 	bool DoScissor() { return m_bScissor; }

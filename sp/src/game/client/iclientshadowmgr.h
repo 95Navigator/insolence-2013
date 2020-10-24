@@ -101,10 +101,6 @@ public:
 
 	virtual void ComputeShadowDepthTextures( const CViewSetup &pView ) = 0;
 
-	// Toggle shadow casting from world light sources
-	virtual void SetShadowFromWorldLightsEnabled( bool bEnable ) = 0;
-
-	virtual void GetFrustumExtents( ClientShadowHandle_t handle, Vector &vecMin, Vector &vecMax ) = 0;
 };
 
 

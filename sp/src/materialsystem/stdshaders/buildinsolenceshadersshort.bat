@@ -8,7 +8,7 @@ rem == Set the absolute path to your mod's game directory here ==
 set GAMEDIR=%cd%\..\..\..\game\insolence
 
 rem == Set the relative or absolute path to Source SDK Base 2013 Singleplayer\bin ==
-set SDKBINDIR=E:\Steam\SteamApps\common\Source SDK Base 2013 Singleplayer\bin
+set SDKBINDIR="E:\Program Files (x86)\Steam\SteamApps\common\Source SDK Base 2013 Singleplayer\bin"
 
 rem ==  Set the Path to your mod's root source code ==
 rem This should already be correct, accepts relative paths only!
@@ -21,7 +21,7 @@ rem ====================================
 rem Use dynamic shaders to build .inc files only
 rem set dynamic_shaders=1
 rem == Setup path to nmake.exe, from vc 2005 common tools directory ==
-call "%VS110COMNTOOLS%vsvars32.bat"
+call "%VS120COMNTOOLS%vsvars32.bat"
 
 
 set TTEXE=..\..\devtools\bin\timeprecise.exe
