@@ -71,6 +71,8 @@ int g_nKillCamTarget2 = 0;
 
 extern ConVar mp_forcecamera; // in gamevars_shared.h
 
+extern void	FormatViewModelAttachment( Vector &vOrigin, bool bInverse );
+
 #define FLASHLIGHT_DISTANCE		1000
 #define MAX_VGUI_INPUT_MODE_SPEED 30
 #define MAX_VGUI_INPUT_MODE_SPEED_SQ (MAX_VGUI_INPUT_MODE_SPEED*MAX_VGUI_INPUT_MODE_SPEED)
@@ -110,6 +112,9 @@ ConVar	spec_freeze_traveltime( "spec_freeze_traveltime", "0.4", FCVAR_CHEAT | FC
 ConVar	spec_freeze_distance_min( "spec_freeze_distance_min", "96", FCVAR_CHEAT, "Minimum random distance from the target to stop when framing them in observer freeze cam." );
 ConVar	spec_freeze_distance_max( "spec_freeze_distance_max", "200", FCVAR_CHEAT, "Maximum random distance from the target to stop when framing them in observer freeze cam." );
 #endif
+
+ConVar	insolence_muzzleflash_light( "insolence_muzzleflash_light", "1", FCVAR_ARCHIVE, "Enables or disables the dynamic lighting based muzzleflash." );
+ConVar	insolence_muzzleflash_time( "insolence_muzzleflash_time", "0.04", FCVAR_REPLICATED|FCVAR_CHEAT, "Amount of time the dynamic lighting based muzzleflash stays visible.", true, 0.001, true, 0.1 ); //0.052
 
 static ConVar	cl_first_person_uses_world_model ( "cl_first_person_uses_world_model", "0", FCVAR_ARCHIVE, "Causes the third person model to be drawn instead of the view model" );
 
@@ -438,6 +443,8 @@ C_BasePlayer::C_BasePlayer() : m_iv_vecViewOffset( "C_BasePlayer::m_iv_vecViewOf
 	m_nForceVisionFilterFlags = 0;
 
 	ListenForGameEvent( "base_player_teleported" );
+
+	m_flMuzzleFlashTime = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -736,6 +743,19 @@ const char * C_BasePlayer::GetPlayerName()
 bool C_BasePlayer::IsPlayerDead()
 {
 	return pl.deadflag == true;
+}
+
+bool C_BasePlayer::ShouldDisplayMuzzleLight()
+{
+	if( insolence_muzzleflash_light.GetBool() && m_flMuzzleFlashTime > gpGlobals->curtime )
+		return true;
+
+	return false;
+}
+
+void C_BasePlayer::DisplayMuzzleLight()
+{
+	m_flMuzzleFlashTime = gpGlobals->curtime + insolence_muzzleflash_time.GetFloat();
 }
 
 //-----------------------------------------------------------------------------
@@ -1203,8 +1223,10 @@ void C_BasePlayer::TeamChange( int iNewTeam )
 //-----------------------------------------------------------------------------
 void C_BasePlayer::UpdateFlashlight()
 {
+	C_BasePlayer *pPlayer = C_BasePlayer::GetLocalPlayer();
+
 	// The dim light is the flashlight.
-	if ( IsEffectActive( EF_DIMLIGHT ) )
+	if ( ( IsEffectActive( EF_DIMLIGHT ) || ShouldDisplayMuzzleLight() ) && ( pPlayer ) )
 	{
 		if (!m_pFlashlight)
 		{
@@ -1217,11 +1239,38 @@ void C_BasePlayer::UpdateFlashlight()
 			m_pFlashlight->TurnOn();
 		}
 
-		Vector vecForward, vecRight, vecUp;
-		EyeVectors( &vecForward, &vecRight, &vecUp );
+		QAngle angLightDir;
+		Vector vecLightOrigin, vecForward, vecRight, vecUp;
+
+		if ( ShouldDisplayMuzzleLight() )
+		{
+			CBaseCombatWeapon *pWeapon = GetActiveWeapon();
+			if ( pWeapon )
+			{
+				// INSOLENCE: Some weapons trigger muzzleflashes that are invisible for AI purposes
+				//			  So if a dynamic lighting based muzzleflash was triggered, but the weapon has no muzzleflash data in it's script, abort
+				if (!pWeapon->HasMuzzleFlash())
+				{
+					return;
+				}
+
+				C_BaseViewModel  *pVM = pPlayer->GetViewModel();
+				if( pVM )
+				{
+					pVM->GetAttachment( 1, vecLightOrigin, angLightDir );
+					::FormatViewModelAttachment( vecLightOrigin, true );
+				}
+				AngleVectors( angLightDir, &vecForward, &vecRight, &vecUp );
+			}
+		}
+		else
+		{
+			EyeVectors( &vecForward, &vecRight, &vecUp );
+			vecLightOrigin = EyePosition();
+		}
 
 		// Update the light with the new position and direction.		
-		m_pFlashlight->UpdateLight( EyePosition(), vecForward, vecRight, vecUp, FLASHLIGHT_DISTANCE );
+		m_pFlashlight->UpdateLight( vecLightOrigin, vecForward, vecRight, vecUp, FLASHLIGHT_DISTANCE, ShouldDisplayMuzzleLight() );
 	}
 	else if (m_pFlashlight)
 	{

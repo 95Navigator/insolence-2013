@@ -269,6 +269,15 @@ public:
 	virtual bool			CanOverload( void ) { return false; }
 	virtual void			UpdateAutoFire( void );
 
+#ifdef CLIENT_DLL
+	// Muzzleflash Scripts
+	int						GetMuzzleFlashFOV( void ) const;
+	float					GetMuzzleFlashColorMax( void ) const;
+	float					GetMuzzleFlashColorMin( void ) const;
+	int						GetMuzzleFlashFarZ( void ) const;
+	bool					HasMuzzleFlash( void ) const;
+#endif
+
 	// Weapon firing
 	virtual void			PrimaryAttack( void );						// do "+ATTACK"
 	virtual void			SecondaryAttack( void ) { return; }			// do "+ATTACK2"

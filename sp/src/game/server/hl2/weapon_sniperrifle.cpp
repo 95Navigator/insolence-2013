@@ -260,8 +260,8 @@ void CWeaponSniperRifle::Precache( void )
 
 //-----------------------------------------------------------------------------
 // Purpose: INSOLENCE: Same as base reload but zooms out before actually reloading.
-//			This lets us avoid those odd bugs where the reload itself and the reload
-//			animation would be out of sync. Also an actual reload sound is played.
+//					   This lets us avoid those odd bugs where the reload itself and the reload animation would be out of sync. 
+//					   Also an actual reload sound is played.
 // Output : Returns true if the weapon was reloaded, false if no more ammo.
 //-----------------------------------------------------------------------------
 bool CWeaponSniperRifle::Reload( void )

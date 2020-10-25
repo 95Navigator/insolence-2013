@@ -143,10 +143,13 @@ public:
 	virtual ShadowType_t	ShadowCastType() { return SHADOWS_NONE; }
 
 	// Should this object receive shadows?
-	/*virtual bool			ShouldReceiveProjectedTextures( int flags )
+	virtual bool			ShouldReceiveProjectedTextures( int flags )
 	{
+		if( GetOwner() && GetOwner() == C_BasePlayer::GetLocalPlayer() )
+			return !( GetOwner()->IsEffectActive( EF_DIMLIGHT ) || C_BasePlayer::GetLocalPlayer()->ShouldDisplayMuzzleLight() );
+
 		return false;
-	}*/
+	}
 
 	// Add entity to visible view models list?
 	virtual void			AddEntity( void );

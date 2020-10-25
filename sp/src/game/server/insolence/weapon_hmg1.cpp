@@ -19,8 +19,7 @@ public:
 
 	CWeaponHMG1();
 	
-	void	Precache( void );
-	bool	Deploy( void );
+	void	AddViewKick( void );
 	bool	Reload( void );
 
 	int CapabilitiesGet( void ) { return bits_CAP_WEAPON_RANGE_ATTACK1; }
@@ -82,16 +81,28 @@ CWeaponHMG1::CWeaponHMG1( )
 {
 }
 
-void CWeaponHMG1::Precache( void )
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CWeaponHMG1::AddViewKick( void )
 {
-	BaseClass::Precache();
+	#define	EASY_DAMPEN			0.5f
+	#define	MAX_VERTICAL_KICK	4.0f	//Degrees
+	#define	SLIDE_LIMIT			2.0f	//Seconds
+	
+	//Get the view kick
+	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
+
+	if ( pPlayer == NULL )
+		return;
+
+	DoMachineGunKick( pPlayer, EASY_DAMPEN, MAX_VERTICAL_KICK, m_fFireDuration, SLIDE_LIMIT );
 }
 
-bool CWeaponHMG1::Deploy( void )
-{
-	return BaseClass::Deploy();
-}
-
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 bool CWeaponHMG1::Reload( void )
 {
 	bool fRet;

@@ -79,10 +79,12 @@ CFlashlightEffect::CFlashlightEffect(int nEntIndex)
 	if ( g_pMaterialSystemHardwareConfig->SupportsBorderColor() )
 	{
 		m_FlashlightTexture.Init( "effects/flashlight_border", TEXTURE_GROUP_OTHER, true );
+		m_MuzzlelightTexture.Init( "effects/muzzlelight_border", TEXTURE_GROUP_OTHER, true );
 	}
 	else
 	{
 		m_FlashlightTexture.Init( "effects/flashlight001", TEXTURE_GROUP_OTHER, true );
+		m_MuzzlelightTexture.Init( "effects/muzzlelight001", TEXTURE_GROUP_OTHER, true );
 	}
 }
 
@@ -147,7 +149,7 @@ public:
 //-----------------------------------------------------------------------------
 // Purpose: Do the headlight
 //-----------------------------------------------------------------------------
-void CFlashlightEffect::UpdateLightNew(const Vector &vecPos, const Vector &vecForward, const Vector &vecRight, const Vector &vecUp )
+void CFlashlightEffect::UpdateLightNew(const Vector &vecPos, const Vector &vecForward, const Vector &vecRight, const Vector &vecUp, bool bMuzzleFlash )
 {
 	VPROF_BUDGET( "CFlashlightEffect::UpdateLightNew", VPROF_BUDGETGROUP_SHADOW_DEPTH_TEXTURING );
 
@@ -197,7 +199,23 @@ void CFlashlightEffect::UpdateLightNew(const Vector &vecPos, const Vector &vecFo
 	iMask &= ~CONTENTS_HITBOX;
 	iMask |= CONTENTS_WINDOW;
 
-	Vector vTarget = vecPos + vecForward * r_flashlightfar.GetFloat();
+	C_BaseCombatWeapon *wpn = C_BasePlayer::GetLocalPlayer()->GetActiveWeapon();
+	bool DoMuzzle = false;
+
+	if( wpn && bMuzzleFlash )
+	{
+		DoMuzzle = wpn->HasMuzzleFlash();
+	}
+
+	Vector vTarget;
+	if( DoMuzzle )
+	{
+		vTarget = vecPos + vecForward * wpn->GetMuzzleFlashFarZ();
+	}
+	else
+	{
+		vTarget = vecPos + vecForward * r_flashlightfar.GetFloat();
+	}
 
 	// Work with these local copies of the basis for the rest of the function
 	Vector vDir   = vTarget - vOrigin;
@@ -314,21 +332,36 @@ void CFlashlightEffect::UpdateLightNew(const Vector &vecPos, const Vector &vecFo
 	if ( bFlicker == false )
 	{
 		state.m_fLinearAtten = r_flashlightlinear.GetFloat();
-		state.m_fHorizontalFOVDegrees = r_flashlightfov.GetFloat();
-		state.m_fVerticalFOVDegrees = r_flashlightfov.GetFloat();
 	}
 
 	state.m_fConstantAtten = r_flashlightconstant.GetFloat();
-	state.m_Color[0] = 1.0f;
-	state.m_Color[1] = 1.0f;
-	state.m_Color[2] = 1.0f;
+	if( DoMuzzle )
+	{
+		state.m_fHorizontalFOVDegrees = abs( wpn->GetMuzzleFlashFOV() );
+		state.m_fVerticalFOVDegrees = abs( wpn->GetMuzzleFlashFOV() );
+		state.m_Color[0] = random->RandomFloat( wpn->GetMuzzleFlashColorMin(), wpn->GetMuzzleFlashColorMax() );
+		state.m_Color[1] = random->RandomFloat( wpn->GetMuzzleFlashColorMin(), wpn->GetMuzzleFlashColorMax() );
+		state.m_Color[2] = random->RandomFloat( wpn->GetMuzzleFlashColorMin(), wpn->GetMuzzleFlashColorMax() );
+
+		state.m_pSpotlightTexture = m_MuzzlelightTexture;
+		
+		state.m_FarZ = wpn->GetMuzzleFlashFarZ();
+	}
+	else
+	{
+		state.m_fHorizontalFOVDegrees = r_flashlightfov.GetFloat();
+		state.m_fVerticalFOVDegrees = r_flashlightfov.GetFloat();
+		state.m_Color[0] = 1.0f;
+		state.m_Color[1] = 1.0f;
+		state.m_Color[2] = 1.0f;
+		state.m_pSpotlightTexture = m_FlashlightTexture;
+		state.m_FarZ = r_flashlightfar.GetFloat();
+	}
 	state.m_Color[3] = r_flashlightambient.GetFloat();
 	state.m_NearZ = r_flashlightnear.GetFloat() + m_flDistMod;	// Push near plane out so that we don't clip the world when the flashlight pulls back 
-	state.m_FarZ = r_flashlightfar.GetFloat();
 	state.m_bEnableShadows = r_flashlightdepthtexture.GetBool();
 	state.m_flShadowMapResolution = r_flashlightdepthres.GetInt();
-
-	state.m_pSpotlightTexture = m_FlashlightTexture;
+	
 	state.m_nSpotlightTextureFrame = 0;
 
 	state.m_flShadowAtten = r_flashlightshadowatten.GetFloat();
@@ -415,7 +448,7 @@ void CFlashlightEffect::UpdateLightOld(const Vector &vecPos, const Vector &vecDi
 //-----------------------------------------------------------------------------
 // Purpose: Do the headlight
 //-----------------------------------------------------------------------------
-void CFlashlightEffect::UpdateLight(const Vector &vecPos, const Vector &vecDir, const Vector &vecRight, const Vector &vecUp, int nDistance)
+void CFlashlightEffect::UpdateLight(const Vector &vecPos, const Vector &vecDir, const Vector &vecRight, const Vector &vecUp, int nDistance, bool bMuzzleFlash)
 {
 	if ( !m_bIsOn )
 	{
@@ -423,7 +456,7 @@ void CFlashlightEffect::UpdateLight(const Vector &vecPos, const Vector &vecDir, 
 	}
 	if( r_newflashlight.GetBool() )
 	{
-		UpdateLightNew( vecPos, vecDir, vecRight, vecUp );
+		UpdateLightNew( vecPos, vecDir, vecRight, vecUp, bMuzzleFlash  );
 	}
 	else
 	{

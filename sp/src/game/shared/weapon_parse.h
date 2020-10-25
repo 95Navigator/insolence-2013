@@ -99,6 +99,14 @@ public:
 	char					szAmmo1[MAX_WEAPON_AMMO_NAME];			// "primary" ammo type
 	char					szAmmo2[MAX_WEAPON_AMMO_NAME];			// "secondary" ammo type
 
+	// MuzzleFlash blocks
+	int						iMuzzleFlashFOV;
+	float					flMuzzleFlashColorMax;
+	float					flMuzzleFlashColorMin;
+	int						iMuzzleFlashFarZ;
+ 
+	bool					m_bHasMuzzle;
+
 	// Sound blocks
 	char					aShootSounds[NUM_SHOOT_SOUND_TYPES][MAX_WEAPON_STRING];	
 

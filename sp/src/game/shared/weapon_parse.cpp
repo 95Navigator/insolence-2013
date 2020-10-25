@@ -446,6 +446,22 @@ void FileWeaponInfo_t::Parse( KeyValues *pKeyValuesData, const char *szWeaponNam
 		Q_strncpy( szAmmo2, pAmmo, sizeof( szAmmo2 )  );
 	iAmmo2Type = GetAmmoDef()->Index( szAmmo2 );
 
+	// Now read the muzzleflash values
+	KeyValues *pMuzzleFlash = pKeyValuesData->FindKey( "MuzzleFlash" );
+	if (pMuzzleFlash)
+	{
+		iMuzzleFlashFOV			= pMuzzleFlash->GetInt( "fov", 90 );
+		flMuzzleFlashColorMax	= pMuzzleFlash->GetFloat( "color_max", 4.9f );
+		flMuzzleFlashColorMin	= pMuzzleFlash->GetFloat( "color_min", 4.4f );
+		iMuzzleFlashFarZ		= pMuzzleFlash->GetInt( "farz", 650 );
+ 
+		m_bHasMuzzle			= true;
+	}
+	else
+	{
+		m_bHasMuzzle			= false;
+	}
+
 	// Now read the weapon sounds
 	memset( aShootSounds, 0, sizeof( aShootSounds ) );
 	KeyValues *pSoundData = pKeyValuesData->FindKey( "SoundData" );

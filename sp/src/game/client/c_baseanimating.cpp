@@ -3300,32 +3300,46 @@ int C_BaseAnimating::InternalDrawModel( int flags )
 }
 
 extern ConVar muzzleflash_light;
+extern ConVar insolence_muzzleflash_light;
 
 void C_BaseAnimating::ProcessMuzzleFlashEvent()
 {
-	// If we have an attachment, then stick a light on it.
-	if ( muzzleflash_light.GetBool() )
+	// INSOLENCE: Only triggers the dynamic lighting based muzzleflash if it's enabled, and if the muzzleflash is coming from the player's viewmodel
+	//			  For everything else, or if the dynamic lighting based muzzleflash is disabled, it uses the HL2 Beta muzzleflash light effect
+	if ( IsViewModel() && insolence_muzzleflash_light.GetBool() )
 	{
-		//FIXME: We should really use a named attachment for this
-		if ( m_Attachments.Count() > 0 )
+		C_BasePlayer *pPlayer = ToBasePlayer( dynamic_cast<C_BaseViewModel *>(this)->GetOwner() );
+		if ( pPlayer && pPlayer == C_BasePlayer::GetLocalPlayer())
 		{
-			Vector vAttachment, vAng;
-			QAngle dummyAngles;
-			GetAttachment( 1, vAttachment, dummyAngles );
+			pPlayer->DisplayMuzzleLight();
+		}
+	}
+	else
+	{
+		// If we have an attachment, then stick a light on it.
+		if ( muzzleflash_light.GetBool() )
+		{
+			//FIXME: We should really use a named attachment for this
+			if ( m_Attachments.Count() > 0 )
+			{
+				Vector vAttachment, vAng;
+				QAngle dummyAngles;
+				GetAttachment( 1, vAttachment, dummyAngles );
 
-			AngleVectors( dummyAngles, &vAng );
-			vAttachment += vAng * 2;
+				AngleVectors( dummyAngles, &vAng );
+				vAttachment += vAng * 2;
 
-			// Make an elight
-			dlight_t *el = effects->CL_AllocDlight( index );
-			el->origin = vAttachment;
-			el->radius = 100;
-			el->decay = el->radius / 0.05f;
-			el->die = gpGlobals->curtime + 0.05f;
-			el->color.r = 255;
-			el->color.g = 192;
-			el->color.b = 64;
-			el->color.exponent = 5;
+				// Make an elight
+				dlight_t *el = effects->CL_AllocDlight( index );
+				el->origin = vAttachment;
+				el->radius = 100;
+				el->decay = el->radius / 0.05f;
+				el->die = gpGlobals->curtime + 0.05f;
+				el->color.r = 255;
+				el->color.g = 192;
+				el->color.b = 64;
+				el->color.exponent = 5;
+			}
 		}
 	}
 }

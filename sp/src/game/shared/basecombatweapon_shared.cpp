@@ -60,6 +60,34 @@ ConVar tf_weapon_criticals_bucket_bottom( "tf_weapon_criticals_bucket_bottom", "
 ConVar tf_weapon_criticals_bucket_default( "tf_weapon_criticals_bucket_default", "300.0", FCVAR_REPLICATED | FCVAR_CHEAT );
 #endif // TF
 
+#ifdef CLIENT_DLL
+
+int CBaseCombatWeapon::GetMuzzleFlashFOV( void ) const
+{
+	return GetWpnData().iMuzzleFlashFOV;
+}
+ 
+float CBaseCombatWeapon::GetMuzzleFlashColorMax( void ) const
+{
+	return GetWpnData().flMuzzleFlashColorMax;
+}
+
+float CBaseCombatWeapon::GetMuzzleFlashColorMin( void ) const
+{
+	return GetWpnData().flMuzzleFlashColorMin;
+}
+
+int CBaseCombatWeapon::GetMuzzleFlashFarZ( void ) const
+{
+	return GetWpnData().iMuzzleFlashFarZ;
+}
+
+bool CBaseCombatWeapon::HasMuzzleFlash( void ) const
+{
+	return GetWpnData().m_bHasMuzzle;
+}
+#endif
+
 CBaseCombatWeapon::CBaseCombatWeapon()
 {
 	// Constructor must call this
