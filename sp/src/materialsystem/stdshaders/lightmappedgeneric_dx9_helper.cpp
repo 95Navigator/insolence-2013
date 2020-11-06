@@ -662,7 +662,6 @@ void DrawLightmappedGenericFlashlight_DX9_Internal( CBaseVSShader *pShader, IMat
 		atten[1] = flashlightState.m_fLinearAtten;
 		atten[2] = flashlightState.m_fQuadraticAtten;
 		atten[3] = flashlightState.m_FarZ;
-		/*atten[3] = flashlightState.m_FarZAtten;*/
 		pShaderAPI->SetPixelShaderConstant( PSREG_FLASHLIGHT_ATTENUATION, atten, 1 );
 
 		float lightPos[4];

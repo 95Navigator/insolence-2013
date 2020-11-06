@@ -496,6 +496,12 @@ void RecvProxy_Int32ToInt32( const CRecvProxyData *pData, void *pStruct, void *p
 	*((unsigned long*)pOut) = (unsigned long)pData->m_Value.m_Int;
 }
 
+void RecvProxy_Int32ToColor32( const CRecvProxyData *pData, void *pStruct, void *pOut )
+{
+	//Always send/receive as little endian to preserve byte order across network byte swaps
+	*((uint32*)pOut) = LittleDWord((uint32)pData->m_Value.m_Int);
+}
+
 #ifdef SUPPORTS_INT64
 void RecvProxy_Int64ToInt64( const CRecvProxyData *pData, void *pStruct, void *pOut )
 {

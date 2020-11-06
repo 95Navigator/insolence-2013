@@ -19,6 +19,7 @@ public:
 
 	CEnvProjectedTexture();
 	bool KeyValue( const char *szKeyName, const char *szValue );
+	virtual bool GetKeyValue( const char *szKeyName, char *szValue, int iMaxLen );
 
 	// Always transmit to clients
 	virtual int UpdateTransmitState();
@@ -34,7 +35,7 @@ public:
 	void InputSetLightOnlyTarget( inputdata_t &inputdata );
 	void InputSetLightWorld( inputdata_t &inputdata );
 	void InputSetEnableShadows( inputdata_t &inputdata );
-//	void InputSetLightColor( inputdata_t &inputdata );
+	void InputSetLightColor( inputdata_t &inputdata );
 	void InputSetSpotlightTexture( inputdata_t &inputdata );
 	void InputSetAmbient( inputdata_t &inputdata );
 
@@ -51,7 +52,9 @@ private:
 	CNetworkVar( bool, m_bLightOnlyTarget );
 	CNetworkVar( bool, m_bLightWorld );
 	CNetworkVar( bool, m_bCameraSpace );
-	CNetworkVector( m_LinearFloatLightColor );
+	CNetworkVar( float, m_flBrightnessScale );
+	CNetworkColor32( m_LightColor );
+	CNetworkVar( float, m_flColorTransitionTime );
 	CNetworkVar( float, m_flAmbient );
 	CNetworkString( m_SpotlightTextureName, MAX_PATH );
 	CNetworkVar( int, m_nSpotlightTextureFrame );

@@ -16,6 +16,11 @@
 #include "ivrenderview.h"
 
 
+#define MAX_DEPTH_TEXTURE_SHADOWS 8
+
+#define MAX_DEPTH_TEXTURE_SHADOWS_TOOLS 8
+
+
 // These are set as it draws reflections, refractions, etc, so certain effects can avoid 
 // drawing themselves in reflections.
 enum DrawFlags_t

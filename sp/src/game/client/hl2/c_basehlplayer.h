@@ -52,6 +52,9 @@ public:
 
 	bool				IsWeaponLowered( void ) { return m_HL2Local.m_bWeaponLowered; }
 
+	// Should this object cast shadows?
+	virtual ShadowType_t		ShadowCastType();
+
 public:
 
 	C_HL2PlayerLocalData		m_HL2Local;

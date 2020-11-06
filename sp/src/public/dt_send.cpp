@@ -267,6 +267,13 @@ void SendProxy_UInt32ToInt32( const SendProp *pProp, const void *pStruct, const 
 {
 	*((unsigned long*)&pOut->m_Int) = *((unsigned long*)pData);
 }
+
+void SendProxy_Color32ToInt32( const SendProp *pProp, const void *pStruct, const void *pData, DVariant *pOut, int iElement, int objectID )
+{
+	//Always send/receive as little endian to preserve byte order across network byte swaps
+	pOut->m_Int = LittleDWord( *((uint32 *)pData) );
+}
+
 #ifdef SUPPORTS_INT64
 void SendProxy_UInt64ToInt64( const SendProp *pProp, const void *pStruct, const void *pData, DVariant *pOut, int iElement, int objectID)
 {

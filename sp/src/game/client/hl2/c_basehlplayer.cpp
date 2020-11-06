@@ -28,6 +28,8 @@ extern ConVar sensitivity;
 ConVar cl_npc_speedmod_intime( "cl_npc_speedmod_intime", "0.25", FCVAR_CLIENTDLL | FCVAR_ARCHIVE );
 ConVar cl_npc_speedmod_outtime( "cl_npc_speedmod_outtime", "1.5", FCVAR_CLIENTDLL | FCVAR_ARCHIVE );
 
+ConVar insolence_player_shadow( "insolence_player_shadow", "0", FCVAR_CHEAT );
+
 IMPLEMENT_CLIENTCLASS_DT(C_BaseHLPlayer, DT_HL2_Player, CHL2_Player)
 	RecvPropDataTable( RECVINFO_DT(m_HL2Local),0, &REFERENCE_RECV_TABLE(DT_HL2Local) ),
 	RecvPropBool( RECVINFO( m_fIsSprinting ) ),
@@ -638,6 +640,18 @@ bool C_BaseHLPlayer::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 	}
 
 	return bResult;
+}
+
+
+//-----------------------------------------------------------------------------
+// Should this object cast shadows?
+//-----------------------------------------------------------------------------
+ShadowType_t C_BaseHLPlayer::ShadowCastType()
+{
+	if ( insolence_player_shadow.GetBool() )
+		return SHADOWS_RENDER_TO_DEPTH_TEXTURE;
+
+	return SHADOWS_NONE;
 }
 
 
