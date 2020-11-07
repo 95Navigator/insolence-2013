@@ -17,9 +17,30 @@
 #include "tier0/icommandline.h"
 #include "tier0/vprof.h"
 
+#include "materialsystem/itexture.h"
+#include "view_scene.h"
+#include "viewrender.h"
+
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
+
+static ConVar gstring_volumetrics_fade_range( "gstring_volumetrics_fade_range", "128.0", FCVAR_CHEAT  );
+ConVar gstring_volumetrics_enabled( "gstring_volumetrics_enabled", "1", FCVAR_ARCHIVE );
+
+void Gstring_volumetrics_subdiv_Callback( IConVar *var, const char *pOldValue, float flOldValue )
+{
+	for ( C_BaseEntity *pEnt = ClientEntityList().FirstBaseEntity(); pEnt != NULL;
+		pEnt = ClientEntityList().NextBaseEntity( pEnt ) )
+	{
+		C_EnvProjectedTexture *pProjectedTexture = dynamic_cast< C_EnvProjectedTexture* >( pEnt );
+		if ( pProjectedTexture != NULL )
+		{
+			pProjectedTexture->ClearVolumetricsMesh();
+		}
+	}
+}
+static ConVar gstring_volumetrics_subdiv( "gstring_volumetrics_subdiv", "0", 0, "", Gstring_volumetrics_subdiv_Callback );
 
 float C_EnvProjectedTexture::m_flVisibleBBoxMinHeight = -FLT_MAX;
 
@@ -42,6 +63,12 @@ IMPLEMENT_CLIENTCLASS_DT( C_EnvProjectedTexture, DT_EnvProjectedTexture, CEnvPro
 	RecvPropFloat(	 RECVINFO( m_flNearZ )	),
 	RecvPropFloat(	 RECVINFO( m_flFarZ )	),
 	RecvPropInt(	 RECVINFO( m_nShadowQuality )	),
+	RecvPropBool(	 RECVINFO( m_bEnableVolumetrics ) ),
+	RecvPropBool(	 RECVINFO( m_bEnableVolumetricsLOD ) ),
+	RecvPropFloat(	 RECVINFO( m_flVolumetricsFadeDistance ) ),
+	RecvPropInt(	 RECVINFO( m_iVolumetricsQuality ) ),
+	RecvPropFloat(	 RECVINFO( m_flVolumetricsQualityBias ) ),
+	RecvPropFloat(	 RECVINFO( m_flVolumetricsMultiplier ) ),
 END_RECV_TABLE()
 
 C_EnvProjectedTexture *C_EnvProjectedTexture::Create( )
@@ -70,6 +97,10 @@ C_EnvProjectedTexture *C_EnvProjectedTexture::Create( )
 }
 
 C_EnvProjectedTexture::C_EnvProjectedTexture( void )
+	: m_bEnableVolumetrics( false )
+	, m_flLastFOV( 0.0f )
+	, m_iCurrentVolumetricsSubDiv( 1 )
+	, m_flVolumetricsQualityBias( 1.0f )
 {
 	m_LightHandle = CLIENTSHADOW_INVALID_HANDLE;
 	m_bForceUpdate = true;
@@ -77,6 +108,8 @@ C_EnvProjectedTexture::C_EnvProjectedTexture( void )
 
 C_EnvProjectedTexture::~C_EnvProjectedTexture( void )
 {
+	Assert( m_pVolmetricMesh == NULL );
+
 	ShutDownLightHandle();
 }
 
@@ -114,6 +147,12 @@ void C_EnvProjectedTexture::OnDataChanged( DataUpdateType_t updateType )
 	m_bForceUpdate = true;
 	UpdateLight();
 	BaseClass::OnDataChanged( updateType );
+
+	if ( m_flLastFOV != m_flLightFOV )
+	{
+		m_flLastFOV = m_flLightFOV;
+		ClearVolumetricsMesh();
+	}
 }
 
 static ConVar asw_perf_wtf("asw_perf_wtf", "0", FCVAR_DEVELOPMENTONLY, "Disable updating of projected shadow textures from UpdateLight" );
@@ -152,13 +191,13 @@ void C_EnvProjectedTexture::UpdateLight( void )
 		// Spotlight's extents aren't in view
 		ShutDownLightHandle();
 
+		ClearVolumetricsMesh();
 		return;
 	}
 
 	if ( m_LightHandle == CLIENTSHADOW_INVALID_HANDLE || m_hTargetEntity != NULL || m_bForceUpdate )
 	{
 		Vector vForward, vRight, vUp, vPos = GetAbsOrigin();
-		FlashlightState_t state;
 
 		if ( m_hTargetEntity != NULL )
 		{
@@ -213,13 +252,13 @@ void C_EnvProjectedTexture::UpdateLight( void )
 			AngleVectors( GetAbsAngles(), &vForward, &vRight, &vUp );
 		}
 
-		state.m_fHorizontalFOVDegrees = m_flLightFOV;
-		state.m_fVerticalFOVDegrees = m_flLightFOV;
+		m_FlashlightState.m_fHorizontalFOVDegrees = m_flLightFOV;
+		m_FlashlightState.m_fVerticalFOVDegrees = m_flLightFOV;
 
-		state.m_vecLightOrigin = vPos;
-		BasisToQuaternion( vForward, vRight, vUp, state.m_quatOrientation );
-		state.m_NearZ = m_flNearZ;
-		state.m_FarZ = m_flFarZ;
+		m_FlashlightState.m_vecLightOrigin = vPos;
+		BasisToQuaternion( vForward, vRight, vUp, m_FlashlightState.m_quatOrientation );
+		m_FlashlightState.m_NearZ = m_flNearZ;
+		m_FlashlightState.m_FarZ = m_flFarZ;
 
 		// quickly check the proposed light's bbox against the view frustum to determine whether we
 		// should bother to create it, if it doesn't exist, or cull it, if it does.
@@ -299,22 +338,22 @@ void C_EnvProjectedTexture::UpdateLight( void )
 
 		float flAlpha = m_flCurrentLinearFloatLightAlpha * ( 1.0f / 255.0f );
 
-		state.m_fQuadraticAtten = 0.0;
-		state.m_fLinearAtten = 100;
-		state.m_fConstantAtten = 0.0f;
-		state.m_Color[0] = ( m_CurrentLinearFloatLightColor.x * ( 1.0f / 255.0f ) * flAlpha ) * m_flBrightnessScale;
-		state.m_Color[1] = ( m_CurrentLinearFloatLightColor.y * ( 1.0f / 255.0f ) * flAlpha ) * m_flBrightnessScale;
-		state.m_Color[2] = ( m_CurrentLinearFloatLightColor.z * ( 1.0f / 255.0f ) * flAlpha ) * m_flBrightnessScale;
-		state.m_Color[3] = 0.0f; // fixme: need to make ambient work m_flAmbient;
-		state.m_bEnableShadows = m_bEnableShadows;
-		state.m_pSpotlightTexture = m_SpotlightTexture;
-		state.m_nSpotlightTextureFrame = m_nSpotlightTextureFrame;
+		m_FlashlightState.m_fQuadraticAtten = 0.0;
+		m_FlashlightState.m_fLinearAtten = 100;
+		m_FlashlightState.m_fConstantAtten = 0.0f;
+		m_FlashlightState.m_Color[0] = ( m_CurrentLinearFloatLightColor.x * ( 1.0f / 255.0f ) * flAlpha ) * m_flBrightnessScale;
+		m_FlashlightState.m_Color[1] = ( m_CurrentLinearFloatLightColor.y * ( 1.0f / 255.0f ) * flAlpha ) * m_flBrightnessScale;
+		m_FlashlightState.m_Color[2] = ( m_CurrentLinearFloatLightColor.z * ( 1.0f / 255.0f ) * flAlpha ) * m_flBrightnessScale;
+		m_FlashlightState.m_Color[3] = 0.0f; // fixme: need to make ambient work m_flAmbient;
+		m_FlashlightState.m_bEnableShadows = m_bEnableShadows;
+		m_FlashlightState.m_pSpotlightTexture = m_SpotlightTexture;
+		m_FlashlightState.m_nSpotlightTextureFrame = m_nSpotlightTextureFrame;
 
-		state.m_nShadowQuality = m_nShadowQuality; // Allow entity to affect shadow quality
+		m_FlashlightState.m_nShadowQuality = m_nShadowQuality; // Allow entity to affect shadow quality
 
 		if( m_LightHandle == CLIENTSHADOW_INVALID_HANDLE )
 		{
-			m_LightHandle = g_pClientShadowMgr->CreateFlashlight( state );
+			m_LightHandle = g_pClientShadowMgr->CreateFlashlight( m_FlashlightState );
 
 			if ( m_LightHandle != CLIENTSHADOW_INVALID_HANDLE )
 			{
@@ -323,7 +362,7 @@ void C_EnvProjectedTexture::UpdateLight( void )
 		}
 		else
 		{
-			g_pClientShadowMgr->UpdateFlashlightState( m_LightHandle, state );
+			g_pClientShadowMgr->UpdateFlashlightState( m_LightHandle, m_FlashlightState );
 			m_bForceUpdate = false;
 		}
 
@@ -348,6 +387,44 @@ void C_EnvProjectedTexture::UpdateLight( void )
 	{
 		g_pClientShadowMgr->UpdateProjectedTexture( m_LightHandle, true );
 	}
+
+	if ( m_bEnableVolumetrics && m_bEnableShadows )
+	{
+		CViewSetup setup;
+		GetShadowViewSetup( setup );
+
+		VMatrix world2View, view2Proj, world2Proj, world2Pixels;
+		render->GetMatricesForView( setup, &world2View, &view2Proj, &world2Proj, &world2Pixels );
+		VMatrix proj2world;
+		MatrixInverseGeneral( world2Proj, proj2world );
+
+		Vector fwd, right, up;
+		AngleVectors( setup.angles, &fwd, &right, &up );
+
+		Vector nearFarPlane[8];
+		Vector3DMultiplyPositionProjective( proj2world, Vector( -1, -1, 1 ), nearFarPlane[ 0 ] );
+		Vector3DMultiplyPositionProjective( proj2world, Vector( 1, -1, 1 ), nearFarPlane[ 1 ] );
+		Vector3DMultiplyPositionProjective( proj2world, Vector( 1, 1, 1 ), nearFarPlane[ 2 ] );
+		Vector3DMultiplyPositionProjective( proj2world, Vector( -1, 1, 1 ), nearFarPlane[ 3 ] );
+
+		Vector3DMultiplyPositionProjective( proj2world, Vector( -1, -1, 0 ), nearFarPlane[ 4 ] );
+		Vector3DMultiplyPositionProjective( proj2world, Vector( 1, -1, 0 ), nearFarPlane[ 5 ] );
+		Vector3DMultiplyPositionProjective( proj2world, Vector( 1, 1, 0 ), nearFarPlane[ 6 ] );
+		Vector3DMultiplyPositionProjective( proj2world, Vector( -1, 1, 0 ), nearFarPlane[ 7 ] );
+
+		m_vecRenderBoundsMin.Init( MAX_COORD_FLOAT, MAX_COORD_FLOAT, MAX_COORD_FLOAT );
+		m_vecRenderBoundsMax.Init( MIN_COORD_FLOAT, MIN_COORD_FLOAT, MIN_COORD_FLOAT );
+
+		for ( int i = 0; i < 8; i++ )
+		{
+			m_vecRenderBoundsMin.x = Min( m_vecRenderBoundsMin.x, nearFarPlane[ i ].x );
+			m_vecRenderBoundsMin.y = Min( m_vecRenderBoundsMin.y, nearFarPlane[ i ].y );
+			m_vecRenderBoundsMin.z = Min( m_vecRenderBoundsMin.y, nearFarPlane[ i ].z );
+			m_vecRenderBoundsMax.x = Max( m_vecRenderBoundsMax.x, nearFarPlane[ i ].x );
+			m_vecRenderBoundsMax.y = Max( m_vecRenderBoundsMax.y, nearFarPlane[ i ].y );
+			m_vecRenderBoundsMax.z = Max( m_vecRenderBoundsMax.y, nearFarPlane[ i ].z );
+		}
+	}
 }
 
 void C_EnvProjectedTexture::Simulate( void )
@@ -355,6 +432,256 @@ void C_EnvProjectedTexture::Simulate( void )
 	UpdateLight();
 
 	BaseClass::Simulate();
+}
+
+int C_EnvProjectedTexture::DrawModel( int flags )
+{
+	if ( !m_bState ||
+		m_LightHandle == CLIENTSHADOW_INVALID_HANDLE ||
+		!m_bEnableVolumetrics ||
+		!gstring_volumetrics_enabled.GetBool() ||
+		CurrentViewID() != VIEW_MAIN )
+	{
+		return 0;
+	}
+
+	float flDistanceFade = 1.0f;
+	if ( m_flVolumetricsFadeDistance > 0.0f )
+	{
+		Vector delta = CurrentViewOrigin() - GetLocalOrigin();
+		flDistanceFade = RemapValClamped( delta.Length(),
+			m_flVolumetricsFadeDistance + gstring_volumetrics_fade_range.GetFloat(),
+			m_flVolumetricsFadeDistance, 0.0f, 1.0f );
+	}
+
+	if ( flDistanceFade <= 0.0f )
+	{
+		return 0;
+	}
+
+	ITexture *pDepthTexture = NULL;
+	const ShadowHandle_t shadowHandle = g_pClientShadowMgr->GetShadowHandle( m_LightHandle );
+	const int iNumActiveDepthTextures = g_pClientShadowMgr->GetNumShadowDepthtextures();
+	for ( int i = 0; i < iNumActiveDepthTextures; i++)
+	{
+		if ( g_pClientShadowMgr->GetShadowDepthHandle( i ) == shadowHandle )
+		{
+			pDepthTexture = g_pClientShadowMgr->GetShadowDepthTex( i );
+			break;
+		}
+	}
+
+	if ( pDepthTexture == NULL )
+	{
+		return 0;
+	}
+
+	if ( m_pVolmetricMesh == NULL )
+	{
+		RebuildVolumetricMesh();
+	}
+
+	UpdateScreenEffectTexture();
+
+	CViewSetup setup;
+	GetShadowViewSetup( setup );
+
+	VMatrix world2View, view2Proj, world2Proj, world2Pixels;
+	render->GetMatricesForView( setup, &world2View, &view2Proj, &world2Proj, &world2Pixels );
+
+	VMatrix tmp, shadowToUnit;
+	MatrixBuildScale( tmp, 1.0f / 2, 1.0f / -2, 1.0f );
+	tmp[0][3] = tmp[1][3] = 0.5f;
+	MatrixMultiply( tmp, world2Proj, shadowToUnit );
+
+	m_FlashlightState.m_Color[ 3 ] = m_flVolumetricsMultiplier / m_iCurrentVolumetricsSubDiv * flDistanceFade;
+
+	CMatRenderContextPtr pRenderContext( materials );
+	pRenderContext->SetFlashlightMode( true );
+	pRenderContext->SetFlashlightStateEx( m_FlashlightState, shadowToUnit, pDepthTexture );
+
+	matrix3x4_t flashlightTransform;
+	AngleMatrix( setup.angles, setup.origin, flashlightTransform );
+
+	pRenderContext->MatrixMode( MATERIAL_MODEL );
+	pRenderContext->PushMatrix();
+	pRenderContext->LoadMatrix( flashlightTransform );
+
+	pRenderContext->Bind( m_matVolumetricsMaterial );
+	m_pVolmetricMesh->Draw();
+
+	pRenderContext->MatrixMode( MATERIAL_MODEL );
+	pRenderContext->PopMatrix();
+	pRenderContext->SetFlashlightMode( false );
+	return 1;
+}
+
+void C_EnvProjectedTexture::ClearVolumetricsMesh()
+{
+	if ( m_pVolmetricMesh != NULL )
+	{
+		CMatRenderContextPtr pRenderContext( materials );
+		pRenderContext->DestroyStaticMesh( m_pVolmetricMesh );
+		m_pVolmetricMesh = NULL;
+	}
+}
+
+void C_EnvProjectedTexture::RebuildVolumetricMesh()
+{
+	if ( !m_matVolumetricsMaterial.IsValid() )
+	{
+		m_matVolumetricsMaterial.Init( materials->FindMaterial( "engine/light_volumetrics", TEXTURE_GROUP_OTHER ) );
+	}
+
+	ClearVolumetricsMesh();
+
+	CViewSetup setup;
+	GetShadowViewSetup( setup );
+	setup.origin = vec3_origin;
+	setup.angles = vec3_angle;
+
+	VMatrix world2View, view2Proj, world2Proj, world2Pixels;
+	render->GetMatricesForView( setup, &world2View, &view2Proj, &world2Proj, &world2Pixels );
+	VMatrix proj2world;
+	MatrixInverseGeneral( world2Proj, proj2world );
+
+	const Vector origin( vec3_origin );
+	QAngle angles( vec3_angle );
+	Vector fwd, right, up;
+	AngleVectors( angles, &fwd, &right, &up );
+
+	Vector nearPlane[4];
+	Vector farPlane[4];
+	Vector3DMultiplyPositionProjective( proj2world, Vector( -1, -1, 1 ), farPlane[ 0 ] );
+	Vector3DMultiplyPositionProjective( proj2world, Vector( 1, -1, 1 ), farPlane[ 1 ] );
+	Vector3DMultiplyPositionProjective( proj2world, Vector( 1, 1, 1 ), farPlane[ 2 ] );
+	Vector3DMultiplyPositionProjective( proj2world, Vector( -1, 1, 1 ), farPlane[ 3 ] );
+
+	Vector3DMultiplyPositionProjective( proj2world, Vector( -1, -1, 0 ), nearPlane[ 0 ] );
+	Vector3DMultiplyPositionProjective( proj2world, Vector( 1, -1, 0 ), nearPlane[ 1 ] );
+	Vector3DMultiplyPositionProjective( proj2world, Vector( 1, 1, 0 ), nearPlane[ 2 ] );
+	Vector3DMultiplyPositionProjective( proj2world, Vector( -1, 1, 0 ), nearPlane[ 3 ] );
+
+	//DebugDrawLine( farPlane[ 0 ], farPlane[ 1 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( farPlane[ 1 ], farPlane[ 2 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( farPlane[ 2 ], farPlane[ 3 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( farPlane[ 3 ], farPlane[ 0 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( nearPlane[ 0 ], nearPlane[ 1 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( nearPlane[ 1 ], nearPlane[ 2 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( nearPlane[ 2 ], nearPlane[ 3 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( nearPlane[ 3 ], nearPlane[ 0 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( farPlane[ 0 ], nearPlane[ 0 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( farPlane[ 1 ], nearPlane[ 1 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( farPlane[ 2 ], nearPlane[ 2 ], 0, 0, 255, true, -1 );
+	//DebugDrawLine( farPlane[ 3 ], nearPlane[ 3 ], 0, 0, 255, true, -1 );
+
+	const Vector vecDirections[3] = {
+		( farPlane[ 0 ] - vec3_origin ),
+		( farPlane[ 1 ] - farPlane[ 0 ] ),
+		( farPlane[ 3 ] - farPlane[ 0 ] ),
+	};
+
+	const VertexFormat_t vertexFormat =  VERTEX_POSITION | VERTEX_TEXCOORD_SIZE( 0, 2 );
+	CMatRenderContextPtr pRenderContext( materials );
+	m_pVolmetricMesh = pRenderContext->CreateStaticMesh( vertexFormat, TEXTURE_GROUP_OTHER, m_matVolumetricsMaterial );
+
+	const int iCvarSubDiv = gstring_volumetrics_subdiv.GetInt();
+	m_iCurrentVolumetricsSubDiv = ( iCvarSubDiv > 2 ) ? iCvarSubDiv : Max( m_iVolumetricsQuality, 3 );
+
+	CMeshBuilder meshBuilder;
+	meshBuilder.Begin( m_pVolmetricMesh, MATERIAL_TRIANGLES, m_iCurrentVolumetricsSubDiv * 6 - 4 );
+
+	for ( int x = 1; x < m_iCurrentVolumetricsSubDiv * 2; x++ )
+	{
+		// never 0.0 or 1.0
+		float flFracX = x / float( m_iCurrentVolumetricsSubDiv * 2 );
+		flFracX = powf( flFracX, m_flVolumetricsQualityBias );
+
+		Vector v00 = origin + vecDirections[ 0 ] * flFracX;
+		Vector v10 = v00 + vecDirections[ 1 ] * flFracX;
+		Vector v11 = v10 + vecDirections[ 2 ] * flFracX;
+		Vector v01 = v00 + vecDirections[ 2 ] * flFracX;
+
+		meshBuilder.Position3f( XYZ( v00 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v10 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v11 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v00 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v11 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v01 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+	}
+
+	for ( int x = 1; x < m_iCurrentVolumetricsSubDiv; x++ )
+	{
+		// never 0.0 or 1.0
+		const float flFracX = x / float( m_iCurrentVolumetricsSubDiv );
+		Vector v0 = origin + vecDirections[ 0 ] + vecDirections[ 1 ] * flFracX;
+		Vector v1 = v0 + vecDirections[ 2 ];
+
+		meshBuilder.Position3f( XYZ( origin ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v0 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v1 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+	}
+
+	for ( int x = 1; x < m_iCurrentVolumetricsSubDiv; x++ )
+	{
+		// never 0.0 or 1.0
+		const float flFracX = x / float( m_iCurrentVolumetricsSubDiv );
+		Vector v0 = origin + vecDirections[ 0 ] + vecDirections[ 2 ] * flFracX;
+		Vector v1 = v0 + vecDirections[ 1 ];
+
+		meshBuilder.Position3f( XYZ( origin ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v0 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3f( XYZ( v1 ) );
+		meshBuilder.TexCoord2f( 0, 0.0f, 0.0f );
+		meshBuilder.AdvanceVertex();
+	}
+
+	meshBuilder.End();
+}
+
+void C_EnvProjectedTexture::GetShadowViewSetup( CViewSetup &setup )
+{
+	setup.origin = m_FlashlightState.m_vecLightOrigin;
+	QuaternionAngles( m_FlashlightState.m_quatOrientation, setup.angles );
+	setup.fov = m_flLightFOV;
+	setup.zFar = m_flFarZ;
+	setup.zNear = m_flNearZ;
+	setup.m_bOrtho = false;
+	setup.m_flAspectRatio = 1.0f;
+	setup.x = setup.y = 0;
+	setup.width = m_FlashlightState.m_pSpotlightTexture ? m_FlashlightState.m_pSpotlightTexture->GetActualWidth() : 512;
+	setup.height = m_FlashlightState.m_pSpotlightTexture ? m_FlashlightState.m_pSpotlightTexture->GetActualHeight() : 512;
 }
 
 bool C_EnvProjectedTexture::IsBBoxVisible( Vector vecExtentsMin, Vector vecExtentsMax )

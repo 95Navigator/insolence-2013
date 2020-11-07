@@ -32,3 +32,7 @@ unsharp_blur_ps2x.fxc
 //screenwater
 screenwater_vs20.fxc
 screenwater_ps2x.fxc
+
+//gstring_light_volumetrics
+gstring_light_volumetrics_vs20.fxc
+gstring_light_volumetrics_ps20b.fxc
