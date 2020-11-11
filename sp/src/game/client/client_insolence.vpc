@@ -147,4 +147,9 @@ $Project "Client (Insolence)"
 	{
 		$File	"C_Env_Projected_Texture.h"
 	}
+	
+	$Folder	"Link Libraries"
+	{
+		$Lib raytrace
+	}
 }
