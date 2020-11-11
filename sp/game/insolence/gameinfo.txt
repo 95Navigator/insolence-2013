@@ -5,6 +5,8 @@
 	title2		""
 	supportsvr	0
 	
+	type		singleplayer_only
+	
 	Icon		"resource/icon"
 	GameData	"insolence.fgd"
 	InstancePath "maps/instances/"
@@ -15,7 +17,7 @@
 
 	FileSystem
 	{
-		SteamAppId				243750 // This sets the app ID in Steam. This is the Source SDK Base 2013 Multiplayer
+		SteamAppId				243730 // This sets the app ID in Steam. This is the Source SDK Base 2013 Singleplayer
 		
 		//
 		// The code that loads this file automatically does a few things here:
@@ -62,6 +64,10 @@
 			game				|all_source_engine_paths|hl2/hl2_sound_vo_english.vpk
 			game				|all_source_engine_paths|hl2/hl2_sound_misc.vpk
 			game				|all_source_engine_paths|hl2/hl2_misc.vpk
+			game				|all_source_engine_paths|ep2/ep2_english.vpk
+			game				|all_source_engine_paths|ep2/ep2_pak.vpk
+			game				|all_source_engine_paths|episodic/ep1_english.vpk
+			game				|all_source_engine_paths|episodic/ep1_pak.vpk
 			platform			|all_source_engine_paths|platform/platform_misc.vpk
 
 			// Add the HL2 directory as a game search path.  This is also where where writes
@@ -73,6 +79,7 @@
 
 			// Last, mount in shared HL2 loose files
 			game				|all_source_engine_paths|hl2
+			game				|all_source_engine_paths|episodic
 			platform			|all_source_engine_paths|platform
 		}
 	}
