@@ -241,22 +241,9 @@ public:
 
 		m_Sprites[0].m_flHorzSize = ( newScale * 0.2f ) + ( m_Sprites[0].m_flHorzSize * 0.8f );
 		m_Sprites[0].m_flVertSize = m_Sprites[0].m_flHorzSize * 1.5f;
-		
-		float	cameraDistance = ( CurrentViewOrigin() - (m_pOwner->GetAbsOrigin())).Length();
-
-		C_BasePlayer *local = C_BasePlayer::GetLocalPlayer();
-		if ( local )
-		{
-			cameraDistance *= local->GetFOVDistanceAdjustFactor();
-		}
-
-		if ( cameraDistance > OVERLAY_MAX_VISIBLE_RANGE )
-			cameraDistance = OVERLAY_MAX_VISIBLE_RANGE;
-
-		float alpha = 1.0f - ( cameraDistance / OVERLAY_MAX_VISIBLE_RANGE );
 
 		Vector	newColor = m_vBaseColors[0] + ( m_vBaseColors[0] * flickerScale * 0.5f );
-		m_Sprites[0].m_vColor = ( newColor * 0.1f ) + ( m_Sprites[0].m_vColor * 0.9f ) * alpha;
+		m_Sprites[0].m_vColor = ( newColor * 0.1f ) + ( m_Sprites[0].m_vColor * 0.9f );
 
 		return true;
 	}

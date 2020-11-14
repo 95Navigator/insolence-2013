@@ -95,6 +95,15 @@ END_RECV_TABLE()
 
 C_FireSmoke::C_FireSmoke()
 {
+	//Server-side
+	m_flStartScale		= 0.0f;
+
+	//Client-side
+	m_flScaleRegister	= 0.0f;
+	m_flScaleStart		= 0.0f;
+	m_flScaleEnd		= 0.0f;
+	m_flScaleTimeStart	= 0.0f;
+	m_flScaleTimeEnd	= 0.0f;
 }
 
 C_FireSmoke::~C_FireSmoke()
@@ -107,6 +116,11 @@ C_FireSmoke::~C_FireSmoke()
 		m_hEffect = NULL;
 	}
 
+	if ( m_pFireOverlay != NULL )
+	{
+		delete m_pFireOverlay;
+		m_pFireOverlay = NULL;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -114,6 +128,7 @@ C_FireSmoke::~C_FireSmoke()
 //-----------------------------------------------------------------------------
 void C_FireSmoke::Simulate( void )
 {
+	Update();
 }
 
 #define	FLAME_ALPHA_START	0.9f
@@ -136,6 +151,7 @@ void C_FireSmoke::OnDataChanged( DataUpdateType_t updateType )
 {
 	BaseClass::OnDataChanged( updateType );
 
+	UpdateEffects();
 
 	if ( updateType == DATA_UPDATE_CREATED )
 	{
@@ -148,6 +164,10 @@ void C_FireSmoke::OnDataChanged( DataUpdateType_t updateType )
 //-----------------------------------------------------------------------------
 void C_FireSmoke::UpdateEffects( void )
 {
+	if ( m_pFireOverlay != NULL )
+	{
+		m_pFireOverlay->m_vPos = GetAbsOrigin();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -190,6 +210,19 @@ void C_FireSmoke::Start( void )
 	// Create the effect of the correct size
 	m_hEffect = ParticleProp()->Create( lpszEffectName, PATTACH_ABSORIGIN );
 
+	//Only make the glow if we've requested it
+	if ( m_nFlags & bitsFIRESMOKE_GLOW )
+	{
+		//Create the fire overlay
+		if ( m_pFireOverlay = new CFireOverlay( this ) )
+		{
+			m_pFireOverlay->m_vPos		= GetAbsOrigin();
+			m_pFireOverlay->m_nSprites	= 1;
+			
+			m_pFireOverlay->m_vBaseColors[0].Init( 0.4f, 0.2f, 0.05f );
+			m_pFireOverlay->Activate();
+		}
+	}
 }
 
 
@@ -242,6 +275,24 @@ void C_FireSmoke::UpdateFlames( void )
 //-----------------------------------------------------------------------------
 void C_FireSmoke::UpdateScale( void )
 {
+	float	time = Helper_GetTime();
+
+	if ( m_flScaleRegister != m_flScaleEnd )
+	{
+		//See if we're done scaling
+		if ( time > m_flScaleTimeEnd )
+		{
+			m_flScaleRegister = m_flStartScale = m_flScaleEnd;
+		}
+		else
+		{
+			//Lerp the scale and set it 
+			float	timeFraction = 1.0f - ( m_flScaleTimeEnd - time ) / ( m_flScaleTimeEnd - m_flScaleTimeStart );	
+			float	newScale = m_flScaleStart + ( ( m_flScaleEnd - m_flScaleStart ) * timeFraction );
+
+			m_flScaleRegister = m_flStartScale = newScale;
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -249,6 +300,9 @@ void C_FireSmoke::UpdateScale( void )
 //-----------------------------------------------------------------------------
 void C_FireSmoke::Update( void )
 {
+	//Update all our parts
+	UpdateEffects();
+	UpdateScale();
 }
 
 //-----------------------------------------------------------------------------

@@ -102,7 +102,7 @@ DECLARE_CLIENT_EFFECT( "RagdollImpact", RagdollImpactCallback );
 //------------------------------------------------------------------------------
 void LeakEffect( trace_t &tr )
 {
-	/*Vector			diffuseColor, baseColor;
+	Vector			diffuseColor, baseColor;
 	Vector			vTraceDir	= (tr.endpos - tr.startpos);
 	VectorNormalize(vTraceDir);
 	Vector			vTraceStart = tr.endpos - 0.1*vTraceDir;
@@ -113,51 +113,23 @@ void LeakEffect( trace_t &tr )
 		return;
 
 	bool			found;
-	IMaterialVar	*pLeakVar = pTraceMaterial->FindVar( "$leakamount", &found, false );
+	IMaterialVar	*pLeakVar = pTraceMaterial->FindVar( "$leakparticle", &found, false );
 	if( !found )
 		return;
 
-	C_Splash* pLeak = new C_Splash();
-	if (!pLeak)
+	const char		*pParticle = pLeakVar->GetStringValue();
+
+	PrecacheParticleSystem( pParticle );
+
+	CSmartPtr<CNewParticleEffect> pEffect = CNewParticleEffect::Create( NULL, pParticle );
+	if ( !pEffect->IsValid() )
 		return;
 
-	ClientEntityList().AddNonNetworkableEntity( pLeak->GetIClientUnknown() );
+	Vector vecImpactY, vecImpactZ;
+	VectorVectors( tr.plane.normal, vecImpactY, vecImpactZ ); 
 
-	IMaterialVar*	pLeakColorVar = pTraceMaterial->FindVar( "$leakcolor", &found );
-	if (found)
-	{
-		Vector color;
-		pLeakColorVar->GetVecValue(color.Base(),3);
-		pLeak->m_vStartColor = pLeak->m_vEndColor = color;
-	}
-
-	IMaterialVar*	pLeakNoiseVar = pTraceMaterial->FindVar( "$leaknoise", &found );
-	if (found)
-	{
-		pLeak->m_flNoise = pLeakNoiseVar->GetFloatValue();
-	}
-
-	IMaterialVar*	pLeakForceVar = pTraceMaterial->FindVar( "$leakforce", &found );
-	if (found)
-	{
-		float flForce = pLeakForceVar->GetFloatValue();
-		pLeak->m_flSpeed		 = flForce;
-		pLeak->m_flSpeedRange	 = pLeak->m_flNoise * flForce;
-	}
-
-	pLeak->m_flSpawnRate		= pLeakVar->GetFloatValue();;
-	pLeak->m_flParticleLifetime = 10;
-	pLeak->m_flWidthMin			= 1;
-	pLeak->m_flWidthMax			= 5;
-	pLeak->SetLocalOrigin( tr.endpos );
-	
-	QAngle angles;
-	VectorAngles( tr.plane.normal, angles );
-	pLeak->SetLocalAngles( angles );
-
-	pLeak->Start(ParticleMgr(), NULL);
-	pLeak->m_flStopEmitTime	= gpGlobals->curtime+5.0;
-	pLeak->SetNextClientThink(gpGlobals->curtime+20.0);*/
+	pEffect->SetControlPoint( 0, tr.endpos );
+	pEffect->SetControlPointOrientation( 0, tr.plane.normal, vecImpactY, vecImpactZ );
 }
 
 //-----------------------------------------------------------------------------
